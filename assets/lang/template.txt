@@ -694,3 +694,15 @@ Album shows PNG screenshots, PNGShot's included=Album shows PNG screenshots, PNG
 Album opens the system album straight away when the SD card has no captures=Album opens the system album straight away when the SD card has no captures
 RetroArch playlists: games RetroArch left without a core show up, run with an installed core that fits=RetroArch playlists: games RetroArch left without a core show up, run with an installed core that fits
 RetroArch playlists are folders in every layout, not only in XMB=RetroArch playlists are folders in every layout, not only in XMB
+
+# --- user profiles ---
+Who is playing?=Who is playing?
+Select a profile to start the game=Select a profile to start the game
+Select a profile to use for save data=Select a profile to use for save data
+No user profiles found=No user profiles found
+User switched=User switched
+Launch as user...=Launch as user...
+Profile=Profile
+Active=Active
+Choose=Choose
+

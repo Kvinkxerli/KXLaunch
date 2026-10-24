@@ -23,7 +23,7 @@ OUTDIR   := $(SDOUT)/atmosphere/contents/0100000000001000/exefs
 # libnx newer than the packaged 4.12.0 (pgl calls added for 23.0.0), so the
 # daemon builds against a libnx master install. Built with the old pair, the
 # daemon did not bring 23.0.x consoles up. Override with LIBNX=... if needed.
-LIBNX ?= $(HOME)/Desktop/Projects/switch/libnx-master-install/opt/devkitpro/libnx
+LIBNX ?= $(DEVKITPRO)/libnx
 include $(DEVKITPRO)/libnx/switch_rules
 
 #---------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ CXXREQUIRED := -Wl,--require-defined,__libnx_initheap \
                -Wl,--require-defined,__appExit \
                -Wl,--require-defined,argvSetup
 
-LDFLAGS  := -specs=$(STRAT_SPECS) -specs=$(DEVKITPRO)/libnx/switch.specs \
+LDFLAGS  := $(if $(wildcard $(STRAT_SPECS)),-specs=$(STRAT_SPECS),) -specs=$(DEVKITPRO)/libnx/switch.specs \
             -g $(ARCH) $(CXXWRAPS) $(CXXREQUIRED) \
             -Wl,-Map,$(TARGET).map -Wl,-z,relro,-z,now
 

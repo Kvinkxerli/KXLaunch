@@ -54,11 +54,7 @@ namespace sl::os {
         // The title array moved into a union in libnx master (titles can be
         // stored compressed since 21.0.0). The daemon builds against libnx
         // master, the menu against the packaged libnx (SL_LIBNX_MASTER).
-#ifdef SL_LIBNX_MASTER
-        const NacpLanguageEntry *lang = nacp.lang_data.lang;
-#else
         const NacpLanguageEntry *lang = nacp.lang;
-#endif
         // Priority order: English, then any non-empty entry
         const NacpLanguageEntry *e = nullptr;
         if (lang[0].name[0] != '\0') e = &lang[0];   // English (AmericanEnglish = index 0)

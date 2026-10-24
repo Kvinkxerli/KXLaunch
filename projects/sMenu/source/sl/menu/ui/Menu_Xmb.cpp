@@ -3,7 +3,7 @@
 #include <sl/menu/ui/Locale.hpp>
 #include <sl/menu/net/Http.hpp>
 #include <sl/smi/Protocol.hpp>
-#include <SDL3_image/SDL_image.h>
+#include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -61,8 +61,7 @@ namespace sl::menu::ui {
     Menu::XmbCat Menu::XmbCatOf(const MenuItem &it) {
         switch (it.kind) {
             case ItemKind::Game:
-            case ItemKind::RandomGame:
-            case ItemKind::Collection:   return XmbCat::Game;
+            case ItemKind::RandomGame:   return XmbCat::Game;
             case ItemKind::Homebrew:     return IsNetHomebrew(it) ? XmbCat::Network
                                                                   : XmbCat::Homebrew;
             case ItemKind::HomebrewMenu:
@@ -258,12 +257,13 @@ namespace sl::menu::ui {
     void Menu::DrawXmbIcon(const MenuItem &it, int cx, int cy, int size, Uint8 alpha) {
         const Theme &t = m_theme.Current();
         const bool isGame = (it.kind == ItemKind::Game);
+        const bool isHb   = (it.kind == ItemKind::Homebrew);
         const int  x = cx - size / 2, y = cy - size / 2;
 
-        SDL_Texture *icon = ItemArt(it);
-        const bool art = icon != nullptr;
-        if (!icon) icon = SystemIcon(it.kind);
-        if (art) {
+        SDL_Texture *icon = isGame ? m_icons.Get(it.app_id)
+                          : isHb   ? m_hb_icons.Get(it.hb_icon)
+                                   : SystemIcon(it.kind);
+        if (icon && (isGame || isHb)) {
             m_gfx->DrawImage(icon, x, y, size, size, alpha);
         } else if (icon) {
             m_gfx->FillRect(x, y, size, size, IconPlate(t, alpha));

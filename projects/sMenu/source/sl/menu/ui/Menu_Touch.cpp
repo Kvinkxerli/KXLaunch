@@ -3,7 +3,7 @@
 #include <sl/menu/ui/Locale.hpp>
 #include <sl/menu/net/Http.hpp>
 #include <sl/smi/Protocol.hpp>
-#include <SDL3_image/SDL_image.h>
+#include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -57,7 +57,6 @@ namespace sl::menu::ui {
     Menu::Action Menu::OnTouch(int phase, int x, int y, u64 &out_app_id) {
         out_app_id = 0;
         if (m_sd_removed) return Action::None;   // frozen: awaiting reboot
-        if (m_boom_state != 0) { if (phase == 0) BoomReassemble(); return Action::None; }
 
         // ---- universal "go back" corner, ahead of every screen-specific
         // branch below so it works the same on all of them, including the
@@ -68,6 +67,33 @@ namespace sl::menu::ui {
                 y >= kBackTapY && y < kBackTapY + kBackTapH) {
                 return DispatchButton(Btn::B, out_app_id);
             }
+        }
+
+        // ---- user profile selection screen: tap a user card ----
+        if (m_screen == Screen::UserSelect && !m_options_open && m_dialog == Dialog::None) {
+            if (phase == 0) {
+                const int n = (int)m_users.size();
+                if (n > 0) {
+                    const int card_w = 180, card_h = 240, gap = 24;
+                    const int tot_w = n * card_w + (n - 1) * gap;
+                    int start_x = (gfx::Gfx::Width - tot_w) / 2;
+                    if (tot_w > gfx::Gfx::Width - 80)
+                        start_x = gfx::Gfx::Width / 2 - m_user_cursor * (card_w + gap) - card_w / 2;
+                    const int cy = 200;
+                    if (y >= cy && y <= cy + card_h) {
+                        for (int i = 0; i < n; i++) {
+                            const int cx = start_x + i * (card_w + gap);
+                            if (x >= cx && x <= cx + card_w) {
+                                if (m_user_cursor == i)
+                                    return DispatchButton(Btn::A, out_app_id);
+                                m_user_cursor = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return Action::None;
         }
 
         // ---- on-screen keyboard: tap a key ----
@@ -184,8 +210,6 @@ namespace sl::menu::ui {
                         cursor = &m_sys_cursor;       rows = kSysEntryN; break;
                     case Screen::Network:
                         cursor = &m_net_cursor;       rows = NET_Count; break;
-                    case Screen::Bluetooth:
-                        cursor = &m_bt_cursor;        rows = BtRowCount(); break;
                     case Screen::Power:
                         cursor = &m_power_cursor;     rows = (int)m_power_rows.size(); break;
                     case Screen::Payloads:
@@ -293,7 +317,7 @@ namespace sl::menu::ui {
                         m_cursor = (int)lroundf(m_scroll_pos);
                         break;
                     case UiMode::Shelf:     // horizontal cover row
-                        m_scroll_pos = clamped(dragged(dx, m_shelf_ps ? kPsSmall + kPsGap : ShelfPitch()), last);
+                        m_scroll_pos = clamped(dragged(dx, ShelfPitch()), last);
                         m_cursor = (int)lroundf(m_scroll_pos);
                         break;
                     case UiMode::Flow: {    // 3D coverflow
@@ -368,6 +392,12 @@ namespace sl::menu::ui {
             if (std::abs(m_fling_vel) < kFlowFlingMin) m_fling_vel = 0.0f;
 
             if (!was_widget_drag && !was_scroll) {
+                // Top bar right area: tapping user nickname / avatar opens user profile switcher
+                if (y < 60 && x > gfx::Gfx::Width - 320) {
+                    OpenUserSelect();
+                    m_touching = false; m_touch_widget = -1;
+                    return Action::None;
+                }
                 // XMB: a tap on the bar opens that category outright.
                 if (m_ui_mode == UiMode::XMB) {
                     const int c = XmbColAt(x, y);
@@ -518,17 +548,6 @@ namespace sl::menu::ui {
             const int idx = (int)lroundf(m_scroll_pos +
                                          (float)(x - gfx::Gfx::Width / 2) / (float)kLinePitch);
             return (idx >= 0 && idx <= last) ? idx : -1;
-        }
-        if (m_ui_mode == UiMode::Shelf && m_shelf_ps) {   // PS4 row (see DrawMainShelfPs)
-            const int total = last + 1;
-            for (int i = std::max(0, (int)m_scroll_pos - 3); i < total; i++) {
-                float px, sz;
-                PsPlace((float)i - m_scroll_pos, px, sz);
-                if (px > gfx::Gfx::Width) break;
-                if (x >= px && x < px + sz && y >= kPsTop && y < kPsTop + sz + (i == m_cursor ? kPsBand : 0))
-                    return i;
-            }
-            return -1;
         }
         if (m_ui_mode == UiMode::Shelf) {   // left-anchored uniform row (see DrawMainShelf)
             const int idx = (int)lroundf(m_scroll_pos + (float)(x - kShelfAnchorX) / ShelfPitch());

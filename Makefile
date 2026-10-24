@@ -29,15 +29,16 @@
 # run at the same time, which staged the installer's payload out of a half-built
 # SdOut and produced an installer with no daemon and no menu in it. The real
 # dependencies are declared below, next to the targets themselves.
-all: ssystem smenu hbloader assets sinstaller
+all: ssystem smenu hbloader assets
 	@echo ""
-	@echo "=== sLaunch build complete ==="
+	@echo "=== KXLaunch build complete ==="
 	@echo "SD card layout ready in SdOut/"
 	@echo ""
 	@echo "  SdOut/atmosphere/contents/0100000000001000/exefs/{main,main.npdm}  <- sSystem daemon (qlaunch)"
-	@echo "  SdOut/slaunch/bin/sMenu/{main,main.npdm}                           <- sMenu SDL applet (via ECS)"
+	@echo "  SdOut/slaunch/bin/sMenu/{main,main.npdm}                           <- sMenu SDL2 applet"
 	@echo "  SdOut/slaunch/fonts/                                               <- bundled fonts"
-	@echo "  SdOut/switch/sInstaller/sInstaller.nro                             <- installer homebrew"
+	@echo "  SdOut/slaunch/lang/                                                <- Russian and English locales"
+	@echo "  SdOut/slaunch/themes/                                              <- theme assets"
 	@echo ""
 
 # Copy bundled assets (fonts + a themes folder for user wallpapers) into the
@@ -102,10 +103,8 @@ ssystem:
 	@echo "--- Building sSystem ---"
 	@$(MAKE) -C projects/sSystem
 
-# The menu ships as the Vulkan (NVK) build; VULKAN=0 gives the OpenGL one.
-# sMenu's Makefile writes the Vulkan build beside the GL one (sMenu-vk), so
-# it is moved into the slot the daemon serves.
-VULKAN ?= 1
+# The menu uses standard devkitPro switch-sdl2 (OpenGL) for 100% Windows toolchain compatibility.
+VULKAN ?= 0
 smenu:
 	@echo "--- Building sMenu ---"
 	@$(MAKE) -C projects/sMenu VULKAN=$(VULKAN)
@@ -140,14 +139,13 @@ nxlink: sinstaller
 clean:
 	@$(MAKE) -C projects/sSystem    clean
 	@$(MAKE) -C projects/sMenu      clean VULKAN=$(VULKAN)
-	@$(MAKE) -C projects/sInstaller clean
 	@$(MAKE) -C projects/hbloader   clean
 	@rm -rf SdOut/
 	@echo "Cleaned."
 
 package: all
 	@echo "--- Packaging release ---"
-	@rm -f slaunch.zip
-	@cd SdOut && zip -r ../slaunch.zip .
-	@echo "Created slaunch.zip"
-	@ls -lh slaunch.zip
+	@rm -f kxlaunch.zip
+	powershell -Command "Compress-Archive -Path 'SdOut/*' -DestinationPath 'kxlaunch.zip' -Force"
+	@echo "Created kxlaunch.zip"
+

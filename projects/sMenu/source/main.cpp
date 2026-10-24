@@ -3,9 +3,8 @@
 // titles or system applets itself, asks the sSystem daemon (which runs as
 // qlaunch) to do so over the SMI protocol.
 
-#include <sl/menu/dbg/Crash.hpp>
 #include <switch.h>
-#include <SDL3/SDL.h>
+#include <SDL2/SDL.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
@@ -19,7 +18,6 @@
 
 #include <sl/smi/Protocol.hpp>
 #include <sl/os/Applications.hpp>
-#include <sl/menu/dbg/Debug.hpp>
 #include <sl/menu/smi/Commands.hpp>
 #include <sl/menu/smi/MessageHandler.hpp>
 #include <sl/menu/gfx/Gfx.hpp>
@@ -121,7 +119,7 @@ static void MarkSetupDone() {
 // ---------------------------------------------------------------------------
 enum SwitchJoyButton {
     JOY_A = 0, JOY_B = 1, JOY_X = 2, JOY_Y = 3,
-    JOY_L = 6, JOY_R = 7, JOY_ZL = 8, JOY_ZR = 9, JOY_PLUS = 10, JOY_MINUS = 11,
+    JOY_L = 6, JOY_R = 7, JOY_PLUS = 10, JOY_MINUS = 11,
     JOY_DLEFT = 12, JOY_DUP = 13, JOY_DRIGHT = 14, JOY_DDOWN = 15,
 };
 static Btn TranslateButton(int b) {
@@ -334,15 +332,14 @@ static void LoadAppsTrampoline(void *) {
 // Show the full-screen warning; the daemon reboots the console shortly after.
 static void OnSdEjected()      { if (g_UI) g_UI->ShowSdRemoved(); }
 static void OnAppListChanged() { g_NeedAppReload = true; }
-// The daemon says the console is going to sleep: draw nothing until it says
-// it woke up (or am reports a resume, or any input arrives - a lost
-// SleepFinished must not leave the menu frozen). Presenting while vi and
-// nvservices power down is what took vi down on wake (issue #13).
-static bool g_Asleep = false;
-static void OnSleepRequested() { g_Asleep = true; BootLog("applet: sleep requested, presenting paused"); }
-static void OnSleepFinished()  { if (g_Asleep) BootLog("applet: woke up, presenting again"); g_Asleep = false; }
-static void OnAppletHook(AppletHookType hook, void *) {
-    if (hook == AppletHookType_OnResume) OnSleepFinished();
+static bool g_Sleeping = false;
+static void OnSleepRequested() {
+    g_Sleeping = true;
+    if (g_UI) g_UI->PauseAudio();
+}
+static void OnSleepFinished() {
+    g_Sleeping = false;
+    if (g_UI) g_UI->ResumeAudio();
 }
 
 // ---------------------------------------------------------------------------
@@ -396,7 +393,6 @@ extern "C" void __appInit() {
 extern "C" void __appExit() {
     __nx_win_exit();
     hidsysExit();
-    btmsysExit();   // opened on first use by the Bluetooth screen (no-op if never)
     socketExit(); nifmExit();
     plExit(); psmExit(); nsExit(); accountExit(); hidExit(); appletExit();
     setExit(); setsysExit(); timeExit();
@@ -534,30 +530,11 @@ int main() {
         }
         status.selected_user = uid;
         menu::cfg::SetUser(uid);
-        // Games are launched as whoever the daemon believes is selected. It
-        // only ever learned that at boot, so a console whose boot-time pick
-        // came back empty launched every game with no user - the game then
-        // cannot mount its save and aborts (2002-1002, issue #6).
-        if (accountUidIsValid(&uid)) menu::smi::SetUser(uid);
         // One-shot: an install from before per-account settings hands its
         // config to whoever boots the menu first. No-op afterwards.
         menu::cfg::MigrateLegacy();
         BootLog("applet: config dir %s", menu::cfg::Dir().c_str());
     }
-
-    // Crashes in a row (Crash.cpp counts them). From kSafeModeCrashes on, this
-    // run leaves out what has the most room to go wrong - anti-aliasing and
-    // the Lua widgets - so a bad setting or widget cannot crash-loop the
-    // console. Nothing is written to the settings: the next clean run is back
-    // to normal.
-    int crashes = 0;
-    if (FILE *cf = fopen(menu::dbg::kCrashCountPath, "r")) {
-        if (fscanf(cf, "%d", &crashes) != 1) crashes = 0;
-        fclose(cf);
-    }
-    const bool safe_mode = crashes >= menu::dbg::kSafeModeCrashes;
-    if (crashes) BootLog("applet: %d crash(es) in a row before this run%s", crashes,
-                         safe_mode ? " - safe mode" : "");
 
     menu::gfx::Gfx gfx;
     // Read straight from the config rather than through Menu: the renderer has
@@ -594,21 +571,15 @@ int main() {
                 if (FILE *m = fopen(AaMarker, "w")) { fputs("1\n", m); fclose(m); }
             }
         }
-        gfx.SetAntialias(want_aa && !safe_mode);
+        gfx.SetAntialias(want_aa);
     }
     if (!gfx.Init()) {
         BootLog("applet: gfx.Init FAILED: %s", SDL_GetError());
         return 0; // sSystem will relaunch us
     }
     BootLog("applet: gfx.Init OK, entering loop");
-    menu::dbg::StartProfiler();
 
-    // SDL3 opens by instance ID, not by index: the first pad SDL knows of.
-    SDL_Joystick *joy = nullptr;
-    if (SDL_JoystickID *ids = SDL_GetJoysticks(nullptr)) {
-        if (ids[0]) joy = SDL_OpenJoystick(ids[0]);
-        SDL_free(ids);
-    }
+    SDL_Joystick *joy = SDL_JoystickOpen(0);
 
     // Re-arm the touchscreen after SDL_Init (which reconfigures HID for its own
     // pad handling and can leave the touch screen unconfigured for our reads).
@@ -620,11 +591,8 @@ int main() {
     {
     Menu ui;
     g_UI = &ui;
-    ui.SetSafeMode(safe_mode);
     ui.Init(&gfx, status.selected_user, status.suspended_app_id, IsFirstRun());
     BootLog("applet: ui.Init done");
-    if (safe_mode)
-        ui.SetStatus(menu::ui::T("The menu crashed and restarted: widgets and anti-aliasing are off until it runs cleanly"));
 
     // Instant: show last run's cached game list on the very first frame. The
     // background loader then just verifies the ids and only re-resolves if the
@@ -650,8 +618,6 @@ int main() {
     cbs.on_app_list_changed = OnAppListChanged;
     cbs.on_sleep_requested  = OnSleepRequested;
     cbs.on_sleep_finished   = OnSleepFinished;
-    AppletHookCookie sleep_hook;
-    appletHook(&sleep_hook, OnAppletHook, nullptr);
 
     g_NeedAppReload = true;
     constexpr int Deadzone = 20000;
@@ -672,6 +638,7 @@ int main() {
     u64 start_v = 0, start_h = 0;                 // tick the hold began (for accel)
 
     u64 g_NextVerify = armGetSystemTick();   // periodic app-list re-verify
+    u64 last_activity_tick = armGetSystemTick(); // user activity / idle tracking
     bool first_frame_logged = false;
     bool aa_confirmed = false;
     u64  next_usb_check = 0;
@@ -714,6 +681,11 @@ int main() {
         }
         menu::smi::PollMessages(cbs);
 
+        if (g_Sleeping) {
+            svcSleepThread(50'000'000ULL);
+            continue;
+        }
+
         // Action buttons via events (no repeat); directions are polled below.
         // SDL maps touch to mouse events; keep the button state across frames --
         // a still finger sends no motion, so otherwise a held touch reads as a
@@ -721,16 +693,16 @@ int main() {
         static bool mouse_down = false; static int mouse_x = 0, mouse_y = 0;
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
-            if (ev.type == SDL_EVENT_QUIT) { g_Running = false; continue; }
-            if (ev.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN) {
-                OnSleepFinished();   // a button press means we are awake
+            last_activity_tick = armGetSystemTick();
+            if (ev.type == SDL_QUIT) { g_Running = false; continue; }
+            if (ev.type == SDL_JOYBUTTONDOWN) {
                 Btn b = TranslateButton(ev.jbutton.button);
                 // L + R + Minus toggles the developer overlay. Checked on the
                 // Minus press with L and R polled as held state, so the combo
                 // cannot be hit by mashing and Minus keeps its normal meaning
                 // on its own.
                 if (b == Btn::Minus && joy &&
-                    SDL_GetJoystickButton(joy, JOY_L) && SDL_GetJoystickButton(joy, JOY_R)) {
+                    SDL_JoystickGetButton(joy, JOY_L) && SDL_JoystickGetButton(joy, JOY_R)) {
                     ui.ToggleDebugOverlay();
                     continue;
                 }
@@ -739,11 +711,11 @@ int main() {
                     continue;
                 u64 launch_id = 0;
                 run(ui.OnButton(b, launch_id), launch_id);
-            } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            } else if (ev.type == SDL_MOUSEBUTTONDOWN) {
                 mouse_down = true;  mouse_x = ev.button.x; mouse_y = ev.button.y;
-            } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+            } else if (ev.type == SDL_MOUSEBUTTONUP) {
                 mouse_down = false;
-            } else if (ev.type == SDL_EVENT_MOUSE_MOTION) {
+            } else if (ev.type == SDL_MOUSEMOTION) {
                 mouse_x = ev.motion.x; mouse_y = ev.motion.y;
             }
         }
@@ -763,10 +735,12 @@ int main() {
 
             u64 tlaunch = 0;
             if (now_touch) {
+                last_activity_tick = armGetSystemTick();
                 last_tx = nx; last_ty = ny;
                 run(ui.OnTouch(was_touching ? 1 : 0, nx, ny, tlaunch), tlaunch);
                 was_touching = true;
             } else if (was_touching) {
+                last_activity_tick = armGetSystemTick();
                 run(ui.OnTouch(2, last_tx, last_ty, tlaunch), tlaunch);
                 was_touching = false;
             }
@@ -782,6 +756,7 @@ int main() {
             HidHomeButtonState hs = {0};
             const bool home_down = hidGetHomeButtonStates(&hs, 1) > 0 && (hs.buttons & 1) != 0;
             if (home_down && !was_home_down) {
+                last_activity_tick = armGetSystemTick();
                 u64 hlaunch = 0;
                 run(ui.OnHomeButton(hlaunch), hlaunch);
             }
@@ -791,28 +766,27 @@ int main() {
         // Poll the current directional state from dpad + hat + left stick.
         int dir_v = 0, dir_h = 0;
         if (joy) {
-            Uint8  hat = SDL_GetJoystickHat(joy, 0);
-            Sint16 ay  = SDL_GetJoystickAxis(joy, 1);
-            Sint16 ax  = SDL_GetJoystickAxis(joy, 0);
-            bool up    = (hat & SDL_HAT_UP)    || ay < -Deadzone || SDL_GetJoystickButton(joy, JOY_DUP);
-            bool down  = (hat & SDL_HAT_DOWN)  || ay >  Deadzone || SDL_GetJoystickButton(joy, JOY_DDOWN);
-            bool left  = (hat & SDL_HAT_LEFT)  || ax < -Deadzone || SDL_GetJoystickButton(joy, JOY_DLEFT);
-            bool right = (hat & SDL_HAT_RIGHT) || ax >  Deadzone || SDL_GetJoystickButton(joy, JOY_DRIGHT);
+            Uint8  hat = SDL_JoystickGetHat(joy, 0);
+            Sint16 ay  = SDL_JoystickGetAxis(joy, 1);
+            Sint16 ax  = SDL_JoystickGetAxis(joy, 0);
+            bool up    = (hat & SDL_HAT_UP)    || ay < -Deadzone || SDL_JoystickGetButton(joy, JOY_DUP);
+            bool down  = (hat & SDL_HAT_DOWN)  || ay >  Deadzone || SDL_JoystickGetButton(joy, JOY_DDOWN);
+            bool left  = (hat & SDL_HAT_LEFT)  || ax < -Deadzone || SDL_JoystickGetButton(joy, JOY_DLEFT);
+            bool right = (hat & SDL_HAT_RIGHT) || ax >  Deadzone || SDL_JoystickGetButton(joy, JOY_DRIGHT);
             dir_v = up ? -1 : down ? 1 : 0;
             dir_h = left ? -1 : right ? 1 : 0;
 
             // Right stick, passed through as a continuous value rather than as
             // button events: coverflow uses it to look around and to spin the
             // selected box, both of which want to be analogue.
-            const Sint16 rx = SDL_GetJoystickAxis(joy, 2);
-            const Sint16 ry = SDL_GetJoystickAxis(joy, 3);
+            const Sint16 rx = SDL_JoystickGetAxis(joy, 2);
+            const Sint16 ry = SDL_JoystickGetAxis(joy, 3);
             auto norm = [](Sint16 v) {
                 if (v > -Deadzone && v < Deadzone) return 0.0f;
                 const float f = (float)v / 32767.0f;
                 return (f < -1.0f) ? -1.0f : (f > 1.0f ? 1.0f : f);
             };
             ui.SetRightStick(norm(rx), norm(ry));
-            ui.SetTriggers(SDL_GetJoystickButton(joy, JOY_ZL) && SDL_GetJoystickButton(joy, JOY_ZR));
         }
         const u64 now = armGetSystemTick();
         auto step = [&](int dir, int &held, u64 &next, u64 &start, Btn neg, Btn pos) {
@@ -830,6 +804,7 @@ int main() {
             }
             held = dir;
             if (fire) {
+                last_activity_tick = armGetSystemTick();
                 u64 launch_id = 0;
                 ui.SetNavFresh(fresh);
                 run(ui.OnButton(dir < 0 ? neg : pos, launch_id), launch_id);
@@ -837,7 +812,6 @@ int main() {
         };
         step(dir_v, held_v, next_v, start_v, Btn::Up,   Btn::Down);
         step(dir_h, held_h, next_h, start_h, Btn::Left, Btn::Right);
-        if (g_Asleep) { svcSleepThread(16'666'666ULL); continue; }
         ui.Render();
         // An action the menu held back to animate first (the Flow launch
         // bounce). Dispatched exactly like an OnButton result.
@@ -848,8 +822,7 @@ int main() {
         if (!first_frame_logged) {
             first_frame_logged = true;
             BootLog("applet: first frame drawn");
-            if (ui.UsbTransfer())    // USB file transfer, for as long as the menu is up
-                menu::usb::MtpStart();
+            menu::usb::MtpStart();   // USB file transfer, for as long as the menu is up
         }
         // A computer plugged in: say so once, and keep the console awake while
         // it stays connected so a long copy is not cut off by auto-sleep.
@@ -866,23 +839,21 @@ int main() {
         // with works. Clearing the marker is what lets anti-aliasing stay on
         // across runs; leaving it would disarm the setting every time.
         if (!aa_confirmed) { aa_confirmed = true; remove(AaMarker); }
-        // A minute up is a run that did not crash: the count starts over.
-        static const u64 start_tick = armGetSystemTick();
-        if (crashes && armGetSystemTick() - start_tick > armGetSystemTickFreq() * 60) {
-            remove(menu::dbg::kCrashCountPath);
-            crashes = 0;
-        }
         // First frame is up; now do the heavier init (widgets) off the hot path.
         ui.InitDeferred();
+
+        // Idle power optimization: if the UI is not animating and user is idle, yield CPU time
+        if (!ui.IsAnimating() && (armGetSystemTick() - last_activity_tick) > (freq / 4)) {
+            svcSleepThread(16'000'000ULL);
+        }
     }
     // Let go of USB before handing off: whatever runs next (homebrew like DBI
     // or Goldleaf especially) may want it for itself.
-    appletUnhook(&sleep_hook);
     menu::usb::MtpStop();
     if (usb_connected) appletSetAutoSleepDisabled(false);
     } // ui destroyed here, before gfx.Exit(), so its textures free cleanly
 
-    if (joy) SDL_CloseJoystick(joy);
+    if (joy) SDL_JoystickClose(joy);
     gfx.Exit();
     return 0;
 }

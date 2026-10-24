@@ -48,9 +48,4 @@ namespace sl::menu::net {
     // The same rule on its own: is `candidate` the game called `title`?
     bool TitlesMatch(const std::string &candidate, const std::string &title);
 
-    // A title as a search engine should see it: (R), (TM) and (C) dropped,
-    // curly quotes made straight. Switch metadata is full of both, and a
-    // search with a curly apostrophe or (R) sign finds nothing on Steam.
-    std::string SearchName(const std::string &title);
-
 } // namespace sl::menu::net

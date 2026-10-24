@@ -388,35 +388,3 @@ namespace sl::menu::usb {
         }
     }
 }
-
-// Sleep plan: kept in memory so the settings rows can be stepped through.
-static SetSysSleepSettings g_sleep = { 0, 2, 0 };   // 5 min handheld, 1 h TV
-extern "C" Result setsysGetSleepSettings(SetSysSleepSettings *out) { *out = g_sleep; return 0; }
-extern "C" Result setsysSetSleepSettings(const SetSysSleepSettings *s) { g_sleep = *s; return 0; }
-extern "C" Result appletLoadAndApplyIdlePolicySettings(void) { return 0; }
-extern "C" bool hosversionAtLeast(u8 major, u8 minor, u8 micro) {
-    return hosversionGet() >= (u32)((major << 16) | (minor << 8) | micro);
-}
-
-// ---- Bluetooth: one paired pair of headphones, one speaker found ----
-static bool g_bt_radio = true, g_bt_search = false, g_bt_conn = true;
-static void bt_dev(BtmAudioDevice *d, u8 last, const char *name) {
-    memset(d, 0, sizeof(*d)); d->addr.address[5] = last; strncpy(d->name, name, sizeof(d->name) - 1);
-}
-extern "C" Result btmsysInitialize(void) { return 0; }
-extern "C" void   btmsysExit(void) {}
-extern "C" Result btmsysGetRadioOnOff(bool *out) { *out = g_bt_radio; return 0; }
-extern "C" Result btmsysEnableRadio(void) { g_bt_radio = true; return 0; }
-extern "C" Result btmsysDisableRadio(void) { g_bt_radio = false; return 0; }
-extern "C" Result btmsysIsDiscoveryingAudioDevice(bool *out) { *out = g_bt_search; return 0; }
-extern "C" Result btmsysStartAudioDeviceDiscovery(void) { g_bt_search = true; return 0; }
-extern "C" Result btmsysStopAudioDeviceDiscovery(void) { g_bt_search = false; return 0; }
-extern "C" Result btmsysGetDiscoveredAudioDevice(BtmAudioDevice *out, s32 count, s32 *n) {
-    *n = count > 0 ? 1 : 0; if (*n) bt_dev(out, 2, "JBL Flip 6"); return 0; }
-extern "C" Result btmsysGetConnectedAudioDevices(BtmAudioDevice *out, s32 count, s32 *n) {
-    *n = (g_bt_conn && count > 0) ? 1 : 0; if (*n) bt_dev(out, 1, "WH-1000XM5"); return 0; }
-extern "C" Result btmsysGetPairedAudioDevices(BtmAudioDevice *out, s32 count, s32 *n) {
-    *n = count > 0 ? 1 : 0; if (*n) bt_dev(out, 1, "WH-1000XM5"); return 0; }
-extern "C" Result btmsysConnectAudioDevice(BtdrvAddress) { g_bt_conn = true; return 0; }
-extern "C" Result btmsysDisconnectAudioDevice(BtdrvAddress) { g_bt_conn = false; return 0; }
-extern "C" Result btmsysRemoveAudioDevicePairing(BtdrvAddress) { return 0; }

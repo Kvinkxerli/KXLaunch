@@ -37,7 +37,8 @@ namespace sl::menu::gfx {
         if (oldest != m_map.end()) {
             // Only exactly-m_scale textures are pooled: Load overwrites them
             // whole, so an odd-sized one (see Load's fallback) must go.
-            const int w = oldest->second.tex->w, h = oldest->second.tex->h;
+            int w = 0, h = 0;
+            SDL_QueryTexture(oldest->second.tex, nullptr, nullptr, &w, &h);
             if (m_scale > 0 && w == m_scale && h == m_scale) m_pool.push_back(oldest->second.tex);
             else if (m_gfx) m_gfx->FreeImage(oldest->second.tex);
             m_map.erase(oldest);
@@ -101,11 +102,11 @@ namespace sl::menu::gfx {
         if (surf->w == m_scale && surf->h == m_scale) {
             if (!m_pool.empty()) { tex = m_pool.back(); m_pool.pop_back(); }
             else {
-                tex = SDL_CreateTexture(m_gfx->Renderer(), SDL_PIXELFORMAT_RGBA32,
+                tex = SDL_CreateTexture(m_gfx->Renderer(), SDL_PIXELFORMAT_RGBA8888,
                                         SDL_TEXTUREACCESS_STATIC, m_scale, m_scale);
                 if (tex) SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
             }
-            if (tex && !SDL_UpdateTexture(tex, nullptr, surf->pixels, surf->pitch)) {
+            if (tex && SDL_UpdateTexture(tex, nullptr, surf->pixels, surf->pitch) != 0) {
                 m_gfx->FreeImage(tex);
                 tex = nullptr;
             }
@@ -114,7 +115,7 @@ namespace sl::menu::gfx {
             // texture that must not enter the pool, which assumes m_scale.
             tex = SDL_CreateTextureFromSurface(m_gfx->Renderer(), surf);
         }
-        SDL_DestroySurface(surf);
+        SDL_FreeSurface(surf);
         return tex;
     }
 

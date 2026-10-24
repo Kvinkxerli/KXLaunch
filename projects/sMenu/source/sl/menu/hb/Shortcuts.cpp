@@ -148,91 +148,16 @@ namespace sl::menu::hb {
         }
 
         // "DETECT" is RetroArch's "ask me later" - a playlist entry that has not
-        // been assigned a core. PickCore below finds one; an entry it cannot
-        // place is skipped rather than launched into nothing.
+        // been assigned a core. We cannot guess one, so such an entry is skipped
+        // rather than launched into nothing.
         bool CoreUsable(const std::string &c) {
             return !c.empty() && c != "DETECT";
         }
 
-        // An installed core and what its .info says it plays: the playlist
-        // systems ("database") and the ROM extensions, both '|'-separated.
-        struct CoreInfo { std::string nro, databases, extensions; };
-
-        // Value of `key = "..."` in a .info file, or empty.
-        std::string InfoValue(const std::string &body, const char *key) {
-            const std::string k(key);
-            for (size_t p = body.find(k); p != std::string::npos; p = body.find(k, p + 1)) {
-                if (p && body[p - 1] != '\n') continue;
-                size_t q = body.find_first_not_of(" \t", p + k.size());
-                if (q == std::string::npos || body[q] != '=') continue;
-                q = body.find('"', q);
-                const size_t e = q == std::string::npos ? q : body.find('"', q + 1);
-                if (e == std::string::npos) return std::string();
-                return body.substr(q + 1, e - q - 1);
-            }
-            return std::string();
-        }
-
-        bool InList(const std::string &list, const std::string &v) {
-            if (v.empty()) return false;
-            for (size_t p = 0; p <= list.size(); ) {
-                size_t e = list.find('|', p);
-                if (e == std::string::npos) e = list.size();
-                if (e - p == v.size() && strncasecmp(list.c_str() + p, v.c_str(), v.size()) == 0)
-                    return true;
-                p = e + 1;
-            }
-            return false;
-        }
-
-        // Every core in <root>/cores with its .info from <root>/info, by name so
-        // the pick below does not depend on readdir order. The Switch cores are
-        // "<name>_libretro_libnx.nro"; their info is "<name>_libretro.info".
-        std::vector<CoreInfo> InstalledCores(const std::string &root) {
-            std::vector<CoreInfo> out;
-            DIR *d = opendir((root + "/cores").c_str());
-            if (!d) return out;
-            while (struct dirent *e = readdir(d)) {
-                std::string n = e->d_name;
-                const std::string suf = "_libnx.nro";
-                if (n.size() <= suf.size() || n.compare(n.size() - suf.size(), suf.size(), suf) != 0)
-                    continue;
-                const std::string body =
-                    ReadFile(root + "/info/" + n.substr(0, n.size() - suf.size()) + ".info");
-                out.push_back({ root.substr(5) + "/cores/" + n,   // stored the way RetroArch would
-                                InfoValue(body, "database"),
-                                InfoValue(body, "supported_extensions") });
-            }
-            closedir(d);
-            std::sort(out.begin(), out.end(),
-                      [](const CoreInfo &a, const CoreInfo &b) { return a.nro < b.nro; });
-            return out;
-        }
-
-        // A core for an entry RetroArch left on "DETECT", chosen the way it would
-        // offer one: a core made for the playlist's system first, else one that
-        // takes the ROM's extension. Empty when nothing installed fits.
-        std::string PickCore(const std::vector<CoreInfo> &cores,
-                             const std::string &system, const std::string &rom) {
-            for (const auto &c : cores)
-                if (InList(c.databases, system)) return c.nro;
-            std::string file = rom.substr(rom.find('#') == std::string::npos ? 0 : rom.find('#') + 1);
-            const size_t dot = file.find_last_of('.');
-            if (dot == std::string::npos || file.find('/', dot) != std::string::npos)
-                return std::string();
-            const std::string ext = file.substr(dot + 1);
-            for (const auto &c : cores)
-                if (InList(c.extensions, ext)) return c.nro;
-            return std::string();
-        }
-
         void AddEntry(std::vector<Shortcut> &out, const std::string &root,
-                      const std::vector<CoreInfo> &cores,
                       const std::string &system, const std::string &rom,
-                      const std::string &label, std::string core) {
-            if (rom.empty()) return;
-            if (!CoreUsable(core)) core = PickCore(cores, system, rom);
-            if (!CoreUsable(core)) return;
+                      const std::string &label, const std::string &core) {
+            if (rom.empty() || !CoreUsable(core)) return;
             const std::string nro = Local(core);
             if (!Quotable(nro) || !Quotable(rom)) return;
 
@@ -254,7 +179,6 @@ namespace sl::menu::hb {
         // by brace depth rather than by searching for the next "path", so a
         // field missing from one entry cannot be filled in from the next.
         bool ParseJsonPlaylist(const std::string &j, const std::string &root,
-                               const std::vector<CoreInfo> &cores,
                                const std::string &fallback_system,
                                std::vector<Shortcut> &out) {
             const size_t items = j.find("\"items\"");
@@ -293,7 +217,7 @@ namespace sl::menu::hb {
                 if (!CoreUsable(core)) core = def_core;
                 if (db.size() > 4 && db.compare(db.size() - 4, 4, ".lpl") == 0)
                     db = db.substr(0, db.size() - 4);
-                AddEntry(out, root, cores, db.empty() ? fallback_system : db, rom, label, core);
+                AddEntry(out, root, db.empty() ? fallback_system : db, rom, label, core);
 
                 i = k + 1;
             }
@@ -304,7 +228,6 @@ namespace sl::menu::hb {
         // rewrites these the first time it touches the playlist, so a card can
         // easily be carrying both formats at once.
         void ParseLegacyPlaylist(const std::string &body, const std::string &root,
-                                 const std::vector<CoreInfo> &cores,
                                  const std::string &fallback_system,
                                  std::vector<Shortcut> &out) {
             // Process line-by-line without keeping the whole split vector in memory.
@@ -317,7 +240,7 @@ namespace sl::menu::hb {
                     std::string db = buf[5];
                     if (db.size() > 4 && db.compare(db.size() - 4, 4, ".lpl") == 0)
                         db = db.substr(0, db.size() - 4);
-                    AddEntry(out, root, cores, db.empty() ? fallback_system : db,
+                    AddEntry(out, root, db.empty() ? fallback_system : db,
                              buf[0], buf[1], buf[2]);
                     idx = 0;
                 }
@@ -339,7 +262,6 @@ namespace sl::menu::hb {
             const std::string dir = root + "/playlists";
             DIR *d = opendir(dir.c_str());
             if (!d) return;
-            const std::vector<CoreInfo> cores = InstalledCores(root);
             while (struct dirent *e = readdir(d)) {
                 if (e->d_name[0] == '.') continue;
                 const size_t n = strlen(e->d_name);
@@ -350,8 +272,8 @@ namespace sl::menu::hb {
                 const std::string body = ReadFile(dir + "/" + e->d_name);
                 if (body.empty()) continue;
                 const std::string system(e->d_name, n - 4);
-                if (!ParseJsonPlaylist(body, root, cores, system, out))
-                    ParseLegacyPlaylist(body, root, cores, system, out);
+                if (!ParseJsonPlaylist(body, root, system, out))
+                    ParseLegacyPlaylist(body, root, system, out);
             }
             closedir(d);
         }

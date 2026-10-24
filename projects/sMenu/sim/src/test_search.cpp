@@ -51,9 +51,9 @@ int main() {
     assert(ContainsFold("ababab", "babab"));
 
     // UTF-8 passes through byte for byte: typed as spelled, it matches.
-    assert(ContainsFold("Pok\xc3\xa9mon Rouge", "Pok\xc3\xa9mon"));
-    assert(ContainsFold("Pok\xc3\xa9mon Rouge", "rouge"));
-    assert(!ContainsFold("Pokemon Red", "Pok\xc3\xa9mon"));   // folding is ASCII-only
+    assert(ContainsFold("Pokémon Rouge", "Pokémon"));
+    assert(ContainsFold("Pokémon Rouge", "rouge"));
+    assert(!ContainsFold("Pokemon Red", "Pokémon"));   // folding is ASCII-only
 
     // Names a real set is full of.
     assert(ContainsFold("Sonic The Hedgehog 2 (World) (Rev A) [!]", "(world)"));

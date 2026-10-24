@@ -4,7 +4,9 @@
 #include <sl/menu/net/Http.hpp>
 #include <sl/menu/net/ContentFilter.hpp>
 #include <sl/smi/Protocol.hpp>
-#include <SDL3_image/SDL_image.h>
+#include <sl/menu/smi/Commands.hpp>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -16,60 +18,6 @@
 #include "Menu_Internal.hpp"
 
 namespace sl::menu::ui {
-
-    static void StepSleepPlan(bool tv, int dir);   // below, with the Theming rows
-
-    // Theming > "Ask who's playing" (issue #7): the daemon shows the system's
-    // player select before launching a game when this file exists.
-    static constexpr const char *kAskUserPath = "sdmc:/slaunch/config/ask_user";
-    static bool AskUserEnabled() {
-        struct stat st {};
-        return stat(kAskUserPath, &st) == 0;
-    }
-
-    // Theming > "Start as user": the daemon boots straight into this account
-    // instead of showing the player select. Two hex words; no file = Off.
-    static constexpr const char *kAutoUserPath = "sdmc:/slaunch/config/auto_user";
-    static bool ReadAutoUser(AccountUid &out) {
-        FILE *f = fopen(kAutoUserPath, "r");
-        if (!f) return false;
-        unsigned long long a = 0, b = 0;
-        const bool got = fscanf(f, "%16llx %16llx", &a, &b) == 2;
-        fclose(f);
-        out.uid[0] = a; out.uid[1] = b;
-        return got && accountUidIsValid(&out);
-    }
-    // Off -> each account on the console -> Off, `dir` steps either way.
-    static void StepAutoUser(int dir) {
-        AccountUid uids[ACC_USER_LIST_SIZE];
-        s32 n = 0;
-        if (R_FAILED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &n)) || n <= 0) return;
-        int pos = 0;                                   // 0 = Off, i + 1 = uids[i]
-        AccountUid cur;
-        if (ReadAutoUser(cur))
-            for (int i = 0; i < n; i++)
-                if (memcmp(&uids[i], &cur, sizeof(cur)) == 0) pos = i + 1;
-        pos = (pos + dir + n + 1) % (n + 1);
-        if (pos == 0) { remove(kAutoUserPath); return; }
-        mkdir("sdmc:/slaunch/config", 0777);
-        if (FILE *f = fopen(kAutoUserPath, "w")) {
-            fprintf(f, "%016llx %016llx\n", (unsigned long long)uids[pos - 1].uid[0],
-                    (unsigned long long)uids[pos - 1].uid[1]);
-            fclose(f);
-        }
-    }
-    static std::string AutoUserName() {
-        AccountUid uid;
-        if (!ReadAutoUser(uid)) return T("Off");
-        AccountProfile p;
-        AccountProfileBase base = {};
-        if (R_FAILED(accountGetProfile(&p, uid))) return T("Off");   // account gone
-        accountProfileGet(&p, nullptr, &base);
-        accountProfileClose(&p);
-        base.nickname[sizeof(base.nickname) - 1] = '\0';
-        return base.nickname[0] ? base.nickname : T("On");
-    }
-
 
     Menu::Action Menu::OnButtonKeyboard(Btn b) {
         auto commit = [&]() {
@@ -125,34 +73,6 @@ namespace sl::menu::ui {
                     m_screen = Screen::Main;
                     break;
                 }
-                case sl::smi::Kb_CollNew:
-                case sl::smi::Kb_CollRename: {
-                    // '[' would break the file format, and a name in use would
-                    // merge two collections.
-                    std::string name = m_kb_text;
-                    name.erase(std::remove_if(name.begin(), name.end(),
-                               [](char c){ return c == '[' || c == ']'; }), name.end());
-                    while (!name.empty() && name.back() == ' ') name.pop_back();
-                    m_screen = Screen::Main;
-                    if (name.empty() || CollIndex(name) >= 0) {
-                        SetStatus(name.empty() ? T("Cancelled") : T("That name is taken"));
-                        break;
-                    }
-                    if (m_kb_purpose == sl::smi::Kb_CollNew) {
-                        m_colls.insert(std::find_if(m_colls.begin(), m_colls.end(),
-                                       [](const Collection &c) { return c.playlist; }),
-                                       { name, { m_kb_key } });
-                        if (!m_collections) { m_collections = true; SaveSettings(); }
-                    } else if (m_kb_app < m_colls.size()) {
-                        m_colls[m_kb_app].name = name;
-                    }
-                    SaveCollections();
-                    const std::string keep = "c" + name;   // the game itself is in there now
-                    RebuildItems();
-                    SelectByKey(keep);
-                    SetStatus(m_kb_purpose == sl::smi::Kb_CollNew ? T("Collection created") : T("Renamed"));
-                    break;
-                }
                 default: // Kb_RenameGame
                     SetCustomName(m_kb_app, m_kb_text.c_str());
                     RebuildItems();
@@ -200,7 +120,7 @@ namespace sl::menu::ui {
         }
         return Action::None;
     }
-    // Setup: Welcome, Layout, Theme, System modules, Good to know, Done.
+    // Setup: Welcome, Layout, Theme, Good to know, Done.
     Menu::Action Menu::OnButtonOobe(Btn b) {
         constexpr int LastStep = kOobeSteps - 1;
         const bool prev = (b == Btn::Left || b == Btn::Up);
@@ -220,12 +140,7 @@ namespace sl::menu::ui {
 
         if (b == Btn::A) {
             if (m_oobe_step < LastStep) {
-                // Leaving the system-module warning counts as having seen it,
-                // so the one-time notice does not repeat it on the first boot.
-                if (m_oobe_step == 3)
-                    if (FILE *f = fopen(kSysmodNoticePath, "w")) fclose(f);
                 m_oobe_step++;
-                if (m_oobe_step == 3) m_boot_modules = BootModules();
                 if (m_oobe_step == 1) m_oobe_gallery = (float)(int)m_ui_mode;
                 if (m_oobe_step == 2) m_oobe_list = (float)m_theme_cursor;
             } else {
@@ -320,8 +235,9 @@ namespace sl::menu::ui {
             }
             if (q.empty()) break;
 
+            // Check if this game should be filtered due to adult content
             if (net::ContentFilter::ShouldFilterGameByName(m->m_pick_name)) {
-                end = PickState::Failed;
+                end = PickState::Failed;  // Treat filtered as failed lookup
                 break;
             }
 
@@ -731,142 +647,6 @@ namespace sl::menu::ui {
         if (a) RefreshNetwork(true);
         return Action::None;
     }
-    // ---- Bluetooth ------------------------------------------------------------
-    // Rows: the radio, the search toggle, then paired audio devices, then what a
-    // search has found. btm:sys answers over IPC, so it is polled about once a
-    // second (and at once after an action), not every frame.
-    int Menu::BtRowCount() const {
-        return 2 + (int)m_bt.paired.size() + (int)m_bt.found.size();
-    }
-    void Menu::RefreshBluetooth(bool force) {
-        const u64 now = armGetSystemTick();
-        if (!force && m_bt_tick && (now - m_bt_tick) < armGetSystemTickFreq()) return;
-        m_bt_tick = now;
-        if (!m_bt_init) {
-            m_bt_init = true;
-            m_bt.ok = R_SUCCEEDED(btmsysInitialize());
-        }
-        if (!m_bt.ok) return;
-        m_bt.audio = hosversionAtLeast(13, 0, 0);
-        bool on = false;
-        if (R_SUCCEEDED(btmsysGetRadioOnOff(&on))) m_bt.radio = on;
-        if (!m_bt.audio) return;
-
-        bool searching = false;
-        if (R_SUCCEEDED(btmsysIsDiscoveryingAudioDevice(&searching))) m_bt.searching = searching;
-
-        BtmAudioDevice devs[16];
-        s32 n = 0;
-        auto same = [](const BtdrvAddress &a, const BtdrvAddress &b) {
-            return memcmp(a.address, b.address, sizeof(a.address)) == 0;
-        };
-        std::vector<BtDevice> connected;
-        if (R_SUCCEEDED(btmsysGetConnectedAudioDevices(devs, 16, &n)))
-            for (s32 i = 0; i < n; i++) connected.push_back({ devs[i].addr, devs[i].name, true });
-        m_bt.paired.clear();
-        if (R_SUCCEEDED(btmsysGetPairedAudioDevices(devs, 16, &n)))
-            for (s32 i = 0; i < n && i < 16; i++) {
-                BtDevice d{ devs[i].addr, devs[i].name, false };
-                for (const auto &c : connected) if (same(c.addr, d.addr)) d.connected = true;
-                m_bt.paired.push_back(d);
-            }
-        m_bt.found.clear();
-        if (R_SUCCEEDED(btmsysGetDiscoveredAudioDevice(devs, 16, &n)))
-            for (s32 i = 0; i < n && i < 16; i++) {
-                bool known = false;
-                for (const auto &p : m_bt.paired) if (same(p.addr, devs[i].addr)) known = true;
-                if (!known) m_bt.found.push_back({ devs[i].addr, devs[i].name, false });
-            }
-        m_bt_cursor = std::min(m_bt_cursor, BtRowCount() - 1);
-    }
-    void Menu::DrawBluetooth() {
-        RefreshBluetooth(false);
-        DrawTopBar("Bluetooth");
-        std::vector<std::string> labels, values;
-        auto nameOf = [](const BtDevice &d) {
-            if (!d.name.empty()) return d.name;
-            char b[24];
-            snprintf(b, sizeof(b), "%02X:%02X:%02X:%02X:%02X:%02X", d.addr.address[0], d.addr.address[1],
-                     d.addr.address[2], d.addr.address[3], d.addr.address[4], d.addr.address[5]);
-            return std::string(b);
-        };
-        labels.push_back(T("Bluetooth"));
-        values.push_back(!m_bt.ok ? T("Not available") : m_bt.radio ? T("On") : T("Off"));
-        labels.push_back(T("Search for audio devices"));
-        values.push_back(!m_bt.audio ? T("Needs system update 13.0.0")
-                         : m_bt.searching ? T("Searching...") : "");
-        for (const auto &d : m_bt.paired) {
-            labels.push_back(nameOf(d));
-            values.push_back(d.connected ? T("Connected") : T("Not connected"));
-        }
-        for (const auto &d : m_bt.found) {
-            labels.push_back(nameOf(d));
-            values.push_back(T("Pair"));
-        }
-        DrawCarousel(labels, values, m_bt_cursor, m_sub_scroll);
-        const int row = m_bt_cursor - 2;
-        if (row >= 0 && row < (int)m_bt.paired.size())
-            DrawStatusHint({ {{"a"}, m_bt.paired[row].connected ? "Disconnect" : "Connect"},
-                             {{"x"}, "Forget"}, {{"b"}, "Back"} });
-        else
-            DrawStatusHint({ {{"up","down"}, "Select"}, {{"a"}, "Change"}, {{"b"}, "Back"} });
-    }
-    Menu::Action Menu::OnButtonBluetooth(Btn b) {
-        if (b == Btn::B) {
-            if (m_bt.searching) btmsysStopAudioDeviceDiscovery();
-            m_screen = BackTarget(); m_sub_scroll = 0;
-            return Action::None;
-        }
-        const int rows = BtRowCount();
-        if (b == Btn::Down) m_bt_cursor = (m_bt_cursor + 1) % rows;
-        if (b == Btn::Up)   m_bt_cursor = (m_bt_cursor + rows - 1) % rows;
-        if (!m_bt.ok) return Action::None;
-
-        const bool a = (b == Btn::A);
-        if (m_bt_cursor == 0 && (a || b == Btn::Left || b == Btn::Right)) {
-            const Result rc = m_bt.radio ? btmsysDisableRadio() : btmsysEnableRadio();
-            if (R_SUCCEEDED(rc)) {
-                SetStatus(m_bt.radio ? T("Bluetooth off") : T("Bluetooth on"));
-                m_sfx_confirm = true;
-            } else {
-                SetStatus(T("Could not change Bluetooth"));
-            }
-            RefreshBluetooth(true);
-            return Action::None;
-        }
-        if (!m_bt.audio) return Action::None;
-        if (m_bt_cursor == 1 && a) {
-            if (!m_bt.radio) { SetStatus(T("Turn Bluetooth on first")); return Action::None; }
-            const Result rc = m_bt.searching ? btmsysStopAudioDeviceDiscovery()
-                                             : btmsysStartAudioDeviceDiscovery();
-            if (R_FAILED(rc)) SetStatus(T("Could not search for devices"));
-            RefreshBluetooth(true);
-            return Action::None;
-        }
-        const int pi = m_bt_cursor - 2, fi = pi - (int)m_bt.paired.size();
-        if (pi >= 0 && pi < (int)m_bt.paired.size()) {
-            const BtDevice d = m_bt.paired[pi];
-            if (a) {
-                const Result rc = d.connected ? btmsysDisconnectAudioDevice(d.addr)
-                                              : btmsysConnectAudioDevice(d.addr);
-                SetStatus(R_FAILED(rc) ? T("Could not connect")
-                          : d.connected ? T("Disconnecting...") : T("Connecting..."));
-            } else if (b == Btn::X) {
-                if (R_SUCCEEDED(btmsysRemoveAudioDevicePairing(d.addr))) SetStatus(T("Device forgotten"));
-            }
-            RefreshBluetooth(true);
-            return Action::None;
-        }
-        if (fi >= 0 && fi < (int)m_bt.found.size() && a) {
-            // Connecting a discovered device pairs it as well.
-            if (m_bt.searching) btmsysStopAudioDeviceDiscovery();
-            const Result rc = btmsysConnectAudioDevice(m_bt.found[fi].addr);
-            SetStatus(R_FAILED(rc) ? T("Could not pair") : T("Pairing..."));
-            RefreshBluetooth(true);
-        }
-        return Action::None;
-    }
-
     void Menu::ScanPayloads() {
         if (m_payloads_scanned) return;   // cheap, but the dirs cannot change under us
         m_payloads_scanned = true;
@@ -1031,8 +811,6 @@ namespace sl::menu::ui {
         std::vector<const MenuItem *> pool;
         for (const auto &i : m_items)
             if (i.kind == ItemKind::Game) pool.push_back(&i);
-        for (const auto &i : m_tucked)   // filed in folders, still fair game
-            if (i.kind == ItemKind::Game) pool.push_back(&i);
         if (pool.empty()) return 0;
         const int n = (int)pool.size();
 
@@ -1141,8 +919,8 @@ namespace sl::menu::ui {
             if (idx >= kChangelogN) break;
             const LogLine &l = kChangelog[idx];
             const int y = kAboutTop + i * kAboutRowH;
-            if (l.head) m_gfx->Text(FontSize::Normal, lx, y, t.fg, l.text);   // a version tag
-            else        m_gfx->Text(FontSize::Small, lx + 24, y + 4, t.dim, T(l.text));
+            if (l.head) m_gfx->Text(FontSize::Normal, lx, y, t.fg, l.text);
+            else        m_gfx->Text(FontSize::Small, lx + 24, y + 4, t.dim, l.text);
         }
 
         // Scroll affordances.
@@ -1211,16 +989,6 @@ namespace sl::menu::ui {
             m_shelf_vertical = !m_shelf_vertical;
             SaveSettings();
         };
-        auto toggleShelfStyle = [&]() { m_shelf_ps = !m_shelf_ps; SaveSettings(); };
-        if (m_theming_cursor == TH_Backdrop &&
-            (b == Btn::Left || b == Btn::Right || b == Btn::A)) {
-            m_backdrop = (Backdrop)(((int)m_backdrop + (b == Btn::Left ? 2 : 1)) % 3);
-            m_bd_key.clear();   // redraw the background in the new mode
-            SaveSettings();
-        }
-        if (m_theming_cursor == TH_ShelfStyle &&
-            (b == Btn::Left || b == Btn::Right || b == Btn::A))
-            toggleShelfStyle();
         auto toggleWrap    = [&]() { m_wrap_nav     = !m_wrap_nav;     SaveSettings(); };
         auto toggleHints   = [&]() { m_show_hints   = !m_show_hints;   SaveSettings(); };
         auto toggleCounter = [&]() { m_show_counter = !m_show_counter; SaveSettings(); };
@@ -1257,35 +1025,16 @@ namespace sl::menu::ui {
             m_tdb_region = (m_tdb_region + (b == Btn::Left ? kTdbRegionCount - 1 : 1)) % kTdbRegionCount;
             SaveSettings();
         }
-        if (m_theming_cursor == TH_Collections && (b == Btn::Left || b == Btn::Right || b == Btn::A)) {
-            m_collections = !m_collections;
-            m_coll_open.clear();
+        auto toggleShortcuts = [&]() {
+            m_shortcuts_everywhere = !m_shortcuts_everywhere;
             SaveSettings();
             RebuildItems();
-            if (m_collections && m_colls.empty())
-                SetStatus(T("X on a game: Collections > New collection"));
-        }
-        if (m_theming_cursor == TH_ShowHidden && (b == Btn::Left || b == Btn::Right || b == Btn::A)) {
-            m_show_hidden = !m_show_hidden;
-            RebuildItems();
-            if (m_show_hidden && m_hidden.empty()) SetStatus(T("X on a game: Hide"));
-        }
+        };
+        if (m_theming_cursor == TH_Shortcuts && (b == Btn::Left || b == Btn::Right))
+            toggleShortcuts();
         auto toggleUpdates = [&]() { m_check_updates = !m_check_updates; SaveSettings(); };
         if (m_theming_cursor == TH_Updates && (b == Btn::Left || b == Btn::Right))
             toggleUpdates();
-        // Takes effect at once: the server starts and stops on its own thread.
-        // Off leaves USB free for homebrew that wants it, and stops the drive
-        // showing up on every computer the console is charged from.
-        if (m_theming_cursor == TH_Usb && (b == Btn::Left || b == Btn::Right || b == Btn::A)) {
-            m_usb_mtp = !m_usb_mtp;
-            if (m_usb_mtp) usb::MtpStart(); else usb::MtpStop();
-            SaveSettings();
-            SetStatus(m_usb_mtp ? T("USB file transfer on") : T("USB file transfer off"));
-        }
-        if (m_theming_cursor == TH_Online && (b == Btn::Left || b == Btn::Right || b == Btn::A)) {
-            m_online_count = !m_online_count;
-            SaveSettings();
-        }
         auto toggleWelcome = [&]() { m_welcome_enabled = !m_welcome_enabled; SaveSettings(); };
         if (m_theming_cursor == TH_Welcome && (b == Btn::Left || b == Btn::Right))
             toggleWelcome();
@@ -1334,17 +1083,6 @@ namespace sl::menu::ui {
             toggleHints();
         if (m_theming_cursor == TH_Counter && (b == Btn::Left || b == Btn::Right))
             toggleCounter();
-        // The daemon reads this when it launches a game, so it is a file on
-        // the card, shared by every account like the system setting it mimics.
-        if (m_theming_cursor == TH_AskUser && (b == Btn::Left || b == Btn::Right || b == Btn::A)) {
-            if (AskUserEnabled()) remove(kAskUserPath);
-            else if (FILE *f = fopen(kAskUserPath, "w")) fclose(f);
-        }
-        if (m_theming_cursor == TH_AutoUser && (b == Btn::Left || b == Btn::Right || b == Btn::A))
-            StepAutoUser(b == Btn::Left ? -1 : +1);
-        if ((m_theming_cursor == TH_Sleep || m_theming_cursor == TH_SleepTv) &&
-            (b == Btn::Left || b == Btn::Right || b == Btn::A))
-            StepSleepPlan(m_theming_cursor == TH_SleepTv, b == Btn::Left ? -1 : +1);
         if (m_theming_cursor == TH_Language && (b == Btn::Left || b == Btn::Right))
             cycleLanguage(b == Btn::Right ? +1 : -1);
         if (b == Btn::A) {
@@ -1363,6 +1101,7 @@ namespace sl::menu::ui {
                 case TH_Wrap:        toggleWrap(); break;
                 case TH_Hints:       toggleHints(); break;
                 case TH_Counter:     toggleCounter(); break;
+                case TH_Shortcuts:   toggleShortcuts(); break;
                 case TH_RetroArch:   toggleRetroArch(); break;
                 case TH_FlowSet:
                     m_screen = Screen::FlowSettings;
@@ -1964,10 +1703,9 @@ namespace sl::menu::ui {
 
         struct Page { const char *title, *sub; };
         const Page pages[kOobeSteps] = {
-            { "Welcome to sLaunch", "A new home. Let's set it up - it only takes a moment." },
+            { "Welcome to sLaunch", "A clean HOME Menu replacement. Let's set it up - it only takes a moment." },
             { "Choose a layout",    "How your games are laid out. You can change it any time in Theming." },
             { "Pick a theme",       "Applied as you browse. Make your own later in Theming > Themes." },
-            { "Turn off system modules", "Sysmodules that hook into the HOME Menu are the most common cause of crashes." },
             { "Good to know",       "A few things worth knowing before you start." },
             { "You're all set",     "Enjoy sLaunch." },
         };
@@ -2006,7 +1744,7 @@ namespace sl::menu::ui {
 
         switch (step) {
             case 0: {   // three layouts fanned out, to show what this is
-                preview((int)UiMode::XMB, (W - 640) / 2.0f, 200.0f, 640.0f, 360.0f, 255, false);
+                preview((int)UiMode::Line, (W - 640) / 2.0f, 200.0f, 640.0f, 360.0f, 255, false);
                 DrawHint({ {{"a"}, "Get started"} });
                 break;
             }
@@ -2038,7 +1776,7 @@ namespace sl::menu::ui {
                     preview(mode, cx - w / 2, cy - h / 2, w, h, a, mode == cur && ad < 0.5f);
                 }
                 m_gfx->TextCentered(FontSize::Large, W / 2, 540, t.title, T(kLayoutNames[cur]));
-                if (cur == (int)UiMode::Shelf) {           // the one we suggest (the default)
+                if (cur == (int)UiMode::Line) {             // the one we suggest
                     const int nw = m_gfx->TextWidth(FontSize::Large, T(kLayoutNames[cur]));
                     m_gfx->Text(FontSize::Small, W / 2 + nw / 2 + 14, 552, t.accent, T("Recommended"));
                 }
@@ -2065,7 +1803,7 @@ namespace sl::menu::ui {
                     const int lh = m_gfx->LineHeight(FontSize::Normal);
                     const int ty = y + (rowH - 12 - lh) / 2;
                     if (sel) m_gfx->Text(FontSize::Normal, x - 30, ty, WithAlpha(t.accent, a), ">");
-                    m_gfx->Text(FontSize::Normal, x, ty, WithAlpha(sel ? t.accent : t.fg, a), T(th.name));
+                    m_gfx->Text(FontSize::Normal, x, ty, WithAlpha(sel ? t.accent : t.fg, a), th.name);
                     const SDL_Color sw[4] = { th.bg_top, th.bg_bottom, th.accent, th.title };
                     for (int k = 0; k < 4; k++) {           // the theme's own colours
                         const int sx = x + listW - (4 - k) * 26, sy = y + (rowH - 12) / 2 - 9;
@@ -2076,34 +1814,7 @@ namespace sl::menu::ui {
                 DrawHint({ {{"up","down"}, "Choose"}, {{"a"}, "Next"}, {{"b"}, "Back"} });
                 break;
             }
-            case 3: {   // system modules: what to do, and which ones are on now
-                const int x = 200, w = W - 2 * x;
-                int y = 200;
-                const int lh = m_gfx->LineHeight(FontSize::Normal) + 6;
-                for (const auto &line : WrapText(FontSize::Normal,
-                        T("Many Atmosphere sysmodules inject into the HOME Menu, which sLaunch replaces. Before reporting a crash or freeze, turn them off in the Sysmodules overlay (or rename atmosphere/contents/<id>/flags/boot2.flag) and restart."),
-                        w)) {
-                    m_gfx->Text(FontSize::Normal, x, y, t.fg, line.c_str());
-                    y += lh;
-                }
-                y += 24;
-                if (m_boot_modules.empty()) {
-                    m_gfx->Text(FontSize::Normal, x, y, t.accent, T("No sysmodules start at boot. You're good to go."));
-                } else {
-                    m_gfx->Text(FontSize::Normal, x, y, t.accent, T("Starting at boot on this console:"));
-                    y += lh;
-                    std::string list;
-                    for (size_t i = 0; i < m_boot_modules.size(); i++)
-                        list += (i ? ", " : "") + m_boot_modules[i];
-                    for (const auto &line : WrapText(FontSize::Small, list, w)) {
-                        m_gfx->Text(FontSize::Small, x, y, t.title, line.c_str());
-                        y += m_gfx->LineHeight(FontSize::Small) + 4;
-                    }
-                }
-                DrawHint({ {{"a"}, "Next"}, {{"b"}, "Back"} });
-                break;
-            }
-            case 4: {   // tips, as four cards
+            case 3: {   // tips, as four cards
                 struct Tip { const char *key; const char *val; };
                 const Tip tips[4] = {
                     { "X",        "Options on any entry: favourite, rename, move" },
@@ -2135,8 +1846,6 @@ namespace sl::menu::ui {
                             y + (rh - lh) / 2, t.accent, val);
                 m_gfx->TextCentered(FontSize::Small, W / 2, y + rh + 26, t.dim,
                                     T("Everything here can be changed later in Theming."));
-                m_gfx->TextCentered(FontSize::Small, W / 2, y + rh + 66, t.dim,
-                                    T("sLaunch counts how many consoles are online with a random ID. Theming > Online count turns it off."));
                 DrawHint({ {{"left","right"}, "Change"}, {{"a"}, "Finish"}, {{"b"}, "Back"} });
                 break;
             }
@@ -2147,31 +1856,6 @@ namespace sl::menu::ui {
     // to the coverflow, so in every other layout it is absent rather than
     // sitting there inert - which means the cursor moves over a filtered list,
     // the same way the theme editor handles its ribbon rows.
-    // Auto-sleep is the console's own setting, normally changed in stock
-    // qlaunch's settings - which sLaunch replaces, so this is the only place
-    // left to change it. The plan index runs 0..5 with 5 = never, the same
-    // for both. am only reads it at boot unless told to reapply (15.0.0+).
-    static void StepSleepPlan(bool tv, int dir) {
-        SetSysSleepSettings s = {};
-        if (R_FAILED(setsysGetSleepSettings(&s))) return;
-        s32 &plan = tv ? s.console_sleep_plan : s.handheld_sleep_plan;
-        plan = (plan + dir + 6) % 6;
-        if (R_SUCCEEDED(setsysSetSleepSettings(&s)) && hosversionAtLeast(15, 0, 0))
-            appletLoadAndApplyIdlePolicySettings();
-    }
-    static std::string SleepPlanText(bool tv) {
-        SetSysSleepSettings s = {};
-        if (R_FAILED(setsysGetSleepSettings(&s))) return "?";
-        static const int handheld_min[] = { 1, 3, 5, 10, 30 };
-        static const int tv_hours[]     = { 1, 2, 3, 6, 12 };
-        const int plan = tv ? s.console_sleep_plan : s.handheld_sleep_plan;
-        if (plan < 0 || plan > 4) return T("Never");
-        char c[32];
-        snprintf(c, sizeof(c), "%d %s", tv ? tv_hours[plan] : handheld_min[plan],
-                 tv ? T("h") : T("min"));
-        return c;
-    }
-
     std::vector<int> Menu::ThemingRows() const {
         std::vector<int> v;
         v.reserve(TH_Count);
@@ -2185,12 +1869,12 @@ namespace sl::menu::ui {
                                 m_ui_mode != UiMode::Deck && m_ui_mode != UiMode::Shelf) continue;
             if (i == TH_SgdbKey && !m_sgdb_enabled) continue;
             if (i == TH_SgdbKey && m_ui_mode != UiMode::Flow &&
-                                   m_ui_mode != UiMode::Deck && m_ui_mode != UiMode::Shelf) continue;
+                                   m_ui_mode != UiMode::Deck) continue;
             if (i == TH_FlowSet && m_ui_mode != UiMode::Flow) continue;
-            if (i == TH_ShelfVert && (m_ui_mode != UiMode::Shelf || m_shelf_ps)) continue;
-            if (i == TH_ShelfStyle && m_ui_mode != UiMode::Shelf) continue;
-            if (i == TH_Backdrop && m_ui_mode != UiMode::Shelf && m_ui_mode != UiMode::Line &&
-                m_ui_mode != UiMode::Cover && m_ui_mode != UiMode::Deck) continue;
+            // XMB gives the shortcuts a column each whatever this says, so
+            // there the row would be a switch wired to nothing.
+            if (i == TH_Shortcuts && (m_ui_mode == UiMode::XMB || !m_retroarch)) continue;
+            if (i == TH_ShelfVert && m_ui_mode != UiMode::Shelf) continue;
             // The wall shape is only meaningful where there is a wall.
             if ((i == TH_TileCols || i == TH_TileRows) && m_ui_mode != UiMode::Grid) continue;
             v.push_back(i);
@@ -2222,21 +1906,20 @@ namespace sl::menu::ui {
         const char *aligns[3] = { T("Left"), T("Center"), T("Right") };
         std::vector<std::string> labels = {
             T("Themes"), T("UI mode"), T("Text position"), T("List icons"),
-            T("Icon pack"), T("Anti-aliasing"), T("Shelf style"), T("Vertical covers"), T("Background art"),
+            T("Icon pack"), T("Anti-aliasing"), T("Vertical covers"),
             T("Columns"), T("Rows"),
             T("Box art region"), T("SteamGridDB"), T("SteamGridDB key"), T("Flow layout"),
             T("Wrap around"), T("Button hints"), T("Position counter"),
-            T("RetroArch games"), T("Collections"),
-            T("Show hidden games"), T("Fonts"), T("Language"),
+            T("RetroArch games"), T("Shortcuts everywhere"),
+            T("Fonts"), T("Language"),
             T("Music"), T("Widgets"),
             T("Menu entries"),
-            T("Screen timeout"), T("Screen timeout (TV)"), T("Ask who's playing"), T("Start as user"),
-            T("Welcome screen"), T("Check for updates"), T("Online count"), T("USB file transfer"),
+            T("Welcome screen"), T("Check for updates"),
             T("About"), T("Back")
         };
         std::vector<std::string> values(labels.size());
         values[TH_UiMode]      = modes[(int)m_ui_mode];
-        if (m_ui_mode == UiMode::Shelf) values[TH_UiMode] += std::string("  (") + T("recommended") + ")";
+        if (m_ui_mode == UiMode::Line) values[TH_UiMode] += std::string("  (") + T("recommended") + ")";
         values[TH_TextPos]     = aligns[(int)m_align];
         values[TH_ListIcons]   = m_list_icons ? T("On") : T("Off");
         values[TH_IconPack]    = (m_icon_pack_idx > 0 &&
@@ -2244,9 +1927,6 @@ namespace sl::menu::ui {
                                ? m_icon_packs[m_icon_pack_idx - 1] : T("Built-in");
         values[TH_Antialias]   = m_antialias ? T("On") : T("Off");
         values[TH_ShelfVert]   = m_shelf_vertical ? T("On") : T("Off");
-        values[TH_ShelfStyle]  = m_shelf_ps ? "PS4" : "Xbox 360";
-        values[TH_Backdrop]    = m_backdrop == Backdrop::Off ? T("Off")
-                               : m_backdrop == Backdrop::Icon ? T("Game icon") : T("Screenshot");
         {
             char c[16];
             snprintf(c, sizeof(c), "%d", TileCols());
@@ -2257,23 +1937,16 @@ namespace sl::menu::ui {
         values[TH_Wrap]        = m_wrap_nav ? T("On") : T("Off");
         values[TH_Hints]       = m_show_hints ? T("On") : T("Off");
         values[TH_Counter]     = m_show_counter ? T("On") : T("Off");
-        values[TH_Collections] = m_collections ? T("On") : T("Off");
-        values[TH_ShowHidden]  = m_show_hidden ? T("On") : T("Off");
+        values[TH_Shortcuts]   = m_shortcuts_everywhere ? T("On") : T("Off");
         values[TH_RetroArch]   = m_retroarch ? T("On") : T("Off");
         values[TH_TdbRegion]   = kTdbRegions[std::clamp(m_tdb_region, 0, kTdbRegionCount - 1)];
         values[TH_Sgdb]        = m_sgdb_enabled ? T("On") : T("Off");
         values[TH_SgdbKey]     = SgdbKeyPresent() ? T("Set") : T("Not set");
         values[TH_Language]    = kLangs[m_lang_idx].name
-                               ? T(kLangs[m_lang_idx].name) : T("Automatic");
+                               ? kLangs[m_lang_idx].name : T("Automatic");
         values[TH_Music]       = m_music.Enabled() ? T("On") : T("Off");
-        values[TH_Sleep]       = SleepPlanText(false);
-        values[TH_SleepTv]     = SleepPlanText(true);
-        values[TH_AskUser]     = AskUserEnabled() ? T("On") : T("Off");
-        values[TH_AutoUser]    = AutoUserName();
         values[TH_Welcome]     = m_welcome_enabled ? T("On") : T("Off");
         values[TH_Updates]     = m_check_updates ? T("On") : T("Off");
-        values[TH_Online]      = m_online_count ? T("On") : T("Off");
-        values[TH_Usb]         = m_usb_mtp ? T("On") : T("Off");
         values[TH_About]       = m_upd_available ? T("Update available") : std::string("v") + SL_VERSION;
         {
             char c[32];
@@ -2387,8 +2060,8 @@ namespace sl::menu::ui {
                     Ellipsize(m_music.CurrentName(), kMuListX - kMuArtX - 30, FontSize::Normal).c_str());
         static const char *kRepeat[] = { "Repeat all", "Repeat one", "Repeat off" };
         std::string state = std::string(m_music.Enabled() ? T("Playing") : T("Paused")) +
-                            "  -  " + T(kRepeat[m_music.RepeatMode()]);
-        if (m_music.Shuffle()) state += std::string("  -  ") + T("Shuffle");
+                            "  ·  " + T(kRepeat[m_music.RepeatMode()]);
+        if (m_music.Shuffle()) state += std::string("  ·  ") + T("Shuffle");
         char vol[48];
         snprintf(vol, sizeof(vol), "%s %d%%", T("Volume"), m_music.Volume());
         const int sy = ty + m_gfx->LineHeight(FontSize::Normal) + 6;
@@ -2621,7 +2294,7 @@ namespace sl::menu::ui {
     }
     // ---- Album (screenshot browser) -----------------------------------------
     // The console files captures as
-    // sdmc:/Nintendo/Album/<year>/<month>/<day>/<timestamp>-<id>.jpg (.png, .mp4 for
+    // sdmc:/Nintendo/Album/<year>/<month>/<day>/<timestamp>-<id>.jpg (.mp4 for
     // clips, played through gfx::VideoPlayer). Walking that fixed
     // four-level shape with opendir is enough; there is no need for a general
     // recursive walker, and the depth cap means a stray directory cannot send us
@@ -2648,12 +2321,8 @@ namespace sl::menu::ui {
             std::sort(out.begin(), out.end());
         };
 
-        // PNGShot keeps its own tree beside the console's, Album/PNGs/<y>/<m>/<d>.
-        // (From the Album root PNGs passes for a year, finds no files at that
-        // depth and adds nothing.)
         std::vector<std::string> years, months, days;
         entries("sdmc:/Nintendo/Album", years, false);
-        entries("sdmc:/Nintendo/Album/PNGs", years, false);
         for (const auto &y : years) {
             months.clear();
             entries(y, months, false);
@@ -2665,25 +2334,16 @@ namespace sl::menu::ui {
                     entries(d, shots, true);
                     for (auto &s : shots) {
                         const char *ext = s.c_str() + s.size() - 4;
-                        if (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".png") == 0 ||
-                            strcasecmp(ext, ".mp4") == 0)
+                        if (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".mp4") == 0)
                             m_album.push_back(std::move(s));
                     }
                 }
             }
         }
-        // Newest first, so the most recent capture is under the cursor on open.
-        // Sorted on the file name's digits, since the two trees' paths do not
-        // interleave by date ("2026102307400000-ID.jpg", "20261023_074000.png").
-        auto stamp = [](const std::string &p) {
-            std::string d;
-            for (size_t i = p.find_last_of('/') + 1; i < p.size() && d.size() < 14; i++)
-                if (p[i] >= '0' && p[i] <= '9') d += p[i];
-                else if (p[i] != '_') break;
-            return d;
-        };
-        std::stable_sort(m_album.begin(), m_album.end(),
-            [&](const std::string &a, const std::string &b) { return stamp(a) > stamp(b); });
+        // Newest first: the path shape sorts chronologically, so one reverse
+        // puts the most recent capture under the cursor on open, which is what
+        // you almost always want.
+        std::reverse(m_album.begin(), m_album.end());
     }
     void Menu::FreeAlbumTexture() {
         if (m_album_tex) m_gfx->FreeImage(m_album_tex);
@@ -2860,11 +2520,9 @@ namespace sl::menu::ui {
 
     // "2026092312000000-ABCDEF.jpg" -> "2026-09-23  12:00:00". The console
     // names every capture by its timestamp, so this is the capture's date.
-    // PNGShot's "20260923_120000.png" reads the same once the '_' is gone.
     static std::string CaptureDate(const std::string &path) {
         const size_t slash = path.find_last_of('/');
-        std::string f = (slash == std::string::npos) ? path : path.substr(slash + 1);
-        if (f.size() > 8 && f[8] == '_') f.erase(8, 1);
+        const std::string f = (slash == std::string::npos) ? path : path.substr(slash + 1);
         if (f.size() < 14 || f.find_first_not_of("0123456789") < 14) return f;
         return f.substr(0, 4) + "-" + f.substr(4, 2) + "-" + f.substr(6, 2) + "  " +
                f.substr(8, 2) + ":" + f.substr(10, 2) + ":" + f.substr(12, 2);
@@ -3016,10 +2674,11 @@ namespace sl::menu::ui {
             if (y < 60 || y > H - 60) continue;
             const Uint8 a   = (Uint8)std::max(60.0f, 255.0f - std::abs(d) * 42.0f);
 
-            // The file name is the capture's timestamp; shown as a date, as
-            // the viewer does, not as the raw 16 digits and encrypted id.
+            // Show the capture's own file name, which is its timestamp.
             const std::string &p = m_album[i];
-            const std::string name = CaptureDate(p);
+            const size_t slash   = p.find_last_of('/');
+            std::string  name    = (slash == std::string::npos) ? p : p.substr(slash + 1);
+            if (name.size() > 4) name.resize(name.size() - 4);   // drop ".jpg"/".mp4"
 
             const FontSize fs = sel ? FontSize::Normal : FontSize::Small;
             const int      lh = m_gfx->LineHeight(fs);
@@ -3155,7 +2814,7 @@ namespace sl::menu::ui {
         std::vector<std::string> labels, values;
         for (int i = 0; i < n; i++) {
             widgets::IWidget *w = m_widgets.At(i);
-            labels.push_back(w ? w->Name() : std::string(T("Widget")));
+            labels.push_back(w ? w->Name() : "Widget");
             values.push_back(m_widgets.IsEnabled(i) ? T("On") : T("Off"));
         }
         DrawCarousel(labels, values, m_widget_cursor, m_sub_scroll);
@@ -3164,7 +2823,7 @@ namespace sl::menu::ui {
     void Menu::DrawWidgetOptions() {
         const Theme &t = m_theme.Current();
         widgets::IWidget *w = m_widgets.At(m_widget_sel);
-        DrawTopBar(w ? w->Name().c_str() : "Widget");   // DrawTopBar translates
+        DrawTopBar(w ? w->Name().c_str() : "Widget");
 
         const int n = w ? w->OptionCount() : 0;
         if (n == 0) {
@@ -3191,7 +2850,7 @@ namespace sl::menu::ui {
         DrawTopBar("Themes");
         std::vector<std::string> labels, values;
         for (int i = 0; i < m_theme.Count(); i++) {
-            labels.push_back(T(m_theme.At(i).name));   // built-in names translate
+            labels.push_back(m_theme.At(i).name);
             values.push_back(i == m_theme.AppliedIndex() ? T("current") : "");
         }
         labels.push_back(T("+ New custom theme"));
@@ -3471,9 +3130,7 @@ namespace sl::menu::ui {
 
         std::vector<std::string> labels, values;
         for (int i = 0; i < (int)m_font_names.size(); i++) {
-            // Entry 0's name is what font.cfg stores, so it is only
-            // translated here, where it is shown.
-            labels.push_back(i == 0 ? std::string(T(m_font_names[i].c_str())) : m_font_names[i]);
+            labels.push_back(m_font_names[i]);
             values.push_back(i == m_font_applied ? T("applied") : "");
         }
         DrawCarousel(labels, values, m_font_cursor, m_sub_scroll);
@@ -3570,49 +3227,6 @@ namespace sl::menu::ui {
         if (nopts == 2) DrawHint({ {{"up","down"}, "Choose"}, {{"a"}, "Confirm"}, {{"b"}, "Cancel"} });
     }
 
-    // ---- system modules -------------------------------------------------------
-    std::vector<std::string> Menu::BootModules() {
-        std::vector<std::string> out;
-        DIR *d = opendir("sdmc:/atmosphere/contents");
-        if (!d) return out;
-        while (dirent *e = readdir(d)) {
-            if (e->d_name[0] == '.') continue;
-            char p[FS_MAX_PATH];
-            struct stat st {};
-            snprintf(p, sizeof(p), "sdmc:/atmosphere/contents/%s/flags/boot2.flag", e->d_name);
-            if (stat(p, &st) != 0) continue;
-            std::string name = e->d_name;           // the program id when there is no name
-            snprintf(p, sizeof(p), "sdmc:/atmosphere/contents/%s/toolbox.json", e->d_name);
-            if (FILE *f = fopen(p, "r")) {
-                char buf[512] = {};
-                fread(buf, 1, sizeof(buf) - 1, f);
-                fclose(f);
-                const std::string v = JsonStr(buf, "name");
-                if (!v.empty()) name = v;
-            }
-            out.push_back(name);
-        }
-        closedir(d);
-        std::sort(out.begin(), out.end());
-        return out;
-    }
-    // Installs that finished setup before the warning existed get it once, as a
-    // notice - and only when something is actually set to start at boot.
-    void Menu::CheckSysmoduleNotice() {
-        m_sysmod_checked = true;
-        struct stat st {};
-        if (stat(kSysmodNoticePath, &st) == 0) return;
-        if (FILE *f = fopen(kSysmodNoticePath, "w")) fclose(f);
-        const std::vector<std::string> mods = BootModules();
-        if (mods.empty()) return;
-        std::string list;
-        for (size_t i = 0; i < mods.size(); i++) list += (i ? ", " : "") + mods[i];
-        m_dialog_title  = T("Turn off system modules");
-        m_dialog_note   = std::string(T("Sysmodules that hook into the HOME Menu are the most common cause of crashes and freezes with sLaunch. Turn them off in the Sysmodules overlay and restart. Starting at boot:")) + " " + list;
-        m_dialog_cursor = 0;
-        m_dialog        = Dialog::CrashReport;   // a one-button notice
-    }
-
     // ---- crash reports ------------------------------------------------------
     // When a game or homebrew crashes, Atmosphere writes a report and the
     // system comes back to the menu as if nothing happened. This is the
@@ -3638,7 +3252,7 @@ namespace sl::menu::ui {
             have_seen = fscanf(fp, "time=%llu", &seen) == 1;
             fclose(fp);
         }
-        // Atmosphere stamps reports with the clock at crash time, and a clock
+        // Atmosphère stamps reports with the clock at crash time, and a clock
         // that was wrong then (seen: year 2168) would otherwise sort above every
         // real crash forever, so a report from the future is ignored and a
         // "seen" stamp from the future is forgotten.
@@ -3695,8 +3309,8 @@ namespace sl::menu::ui {
 
         char note[512];
         snprintf(note, sizeof(note), T(newest.dir == 1
-                     ? "%s hit a fatal error. Atmosphere usually saves the crash details, check the logs: atmosphere/fatal_reports/%s"
-                     : "%s crashed. Atmosphere usually saves the crash details, check the logs: atmosphere/crash_reports/%s"),
+                     ? "%s hit a fatal error. Atmosphère usually saves the crash details, check the logs: atmosphere/fatal_reports/%s"
+                     : "%s crashed. Atmosphère usually saves the crash details, check the logs: atmosphere/crash_reports/%s"),
                  who.c_str(), newest.file.c_str());
         m_dialog_note = note;
         if (fresh > 1) {
@@ -3718,4 +3332,210 @@ namespace sl::menu::ui {
     // why this layout keeps a row index of its own instead of reusing the flat
     // cursor the 1-D layouts share. The selection itself is still m_cursor, so
     // launching, options, favourites and the move mode all work here untouched.
+
+    bool Menu::IsUserSelectOpen() const {
+        return m_screen == Screen::UserSelect;
+    }
+
+    void Menu::PauseAudio() {
+        Mix_PauseMusic();
+    }
+
+    void Menu::ResumeAudio() {
+        Mix_ResumeMusic();
+    }
+
+    bool Menu::IsAnimating() const {
+        if (m_screen_trans_tick != 0) return true;
+        if (m_appear_p < 1.0f) return true;
+        if (m_launch_tick != 0) return true;
+        if (m_deck_menu_close_tick != 0) return true;
+        if (m_status_tick != 0) {
+            const u64 now = armGetSystemTick();
+            if ((now - m_status_tick) < 3 * armGetSystemTickFreq()) return true;
+        }
+        if (ScrollBusy()) return true;
+        if ((m_ui_mode == UiMode::Line || m_ui_mode == UiMode::Shelf || m_ui_mode == UiMode::List || m_ui_mode == UiMode::Cover)
+            && std::abs(m_cursor - m_scroll_pos) >= 0.01f) return true;
+        if (m_ui_mode == UiMode::Flow && std::abs(m_cursor - m_flow_scroll) >= 0.01f) return true;
+        if (m_ui_mode == UiMode::Grid && std::abs(m_cursor - m_grid_scroll) >= 0.01f) return true;
+        if (m_ui_mode == UiMode::Deck && std::abs(m_cursor - m_deck_scroll) >= 0.01f) return true;
+        if (m_ui_mode == UiMode::XMB && std::abs(m_xmb_item - m_xmb_item_scroll) >= 0.01f) return true;
+        if (m_loading) return true;
+        return false;
+    }
+
+    void Menu::OpenUserSelect(bool launch_after, u64 app_id) {
+        CloseUserSelect();
+        m_user_launch_after = launch_after;
+        m_user_launch_app_id = app_id;
+        m_user_cursor = 0;
+
+        s32 count = 0;
+        AccountUid uids[ACC_USER_LIST_SIZE];
+        if (R_SUCCEEDED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &count)) && count > 0) {
+            for (s32 i = 0; i < count; i++) {
+                UserEntry entry;
+                entry.uid = uids[i];
+                entry.is_current = (memcmp(&entry.uid, &m_user, sizeof(AccountUid)) == 0);
+                if (entry.is_current) m_user_cursor = (int)m_users.size();
+
+                AccountProfile prof;
+                AccountProfileBase base = {};
+                if (R_SUCCEEDED(accountGetProfile(&prof, uids[i]))) {
+                    accountProfileGet(&prof, nullptr, &base);
+                    if (base.nickname[0]) {
+                        strncpy(entry.nickname, base.nickname, 32);
+                        entry.nickname[32] = '\0';
+                    } else {
+                        snprintf(entry.nickname, sizeof(entry.nickname), "User %d", (int)i + 1);
+                    }
+
+                    u32 img_size = 0;
+                    if (R_SUCCEEDED(accountProfileGetImageSize(&prof, &img_size)) && img_size > 0) {
+                        std::vector<u8> img_buf(img_size);
+                        u32 read_size = 0;
+                        if (R_SUCCEEDED(accountProfileLoadImage(&prof, img_buf.data(), img_size, &read_size)) && read_size > 0) {
+                            SDL_RWops *rw = SDL_RWFromMem(img_buf.data(), read_size);
+                            if (rw) {
+                                SDL_Surface *surf = IMG_Load_RW(rw, 1);
+                                if (surf) {
+                                    entry.icon = SDL_CreateTextureFromSurface(m_gfx->Renderer(), surf);
+                                    SDL_FreeSurface(surf);
+                                }
+                            }
+                        }
+                    }
+                    accountProfileClose(&prof);
+                }
+                m_users.push_back(entry);
+            }
+        }
+        m_screen = Screen::UserSelect;
+    }
+
+    void Menu::CloseUserSelect() {
+        for (auto &u : m_users) {
+            if (u.icon) {
+                SDL_DestroyTexture(u.icon);
+                u.icon = nullptr;
+            }
+        }
+        m_users.clear();
+    }
+
+    Menu::Action Menu::OnButtonUserSelect(Btn b, u64 &out_app_id) {
+        if (b == Btn::B) {
+            CloseUserSelect();
+            m_screen = Screen::Main;
+            return Action::None;
+        }
+        const int n = (int)m_users.size();
+        if (n == 0) {
+            m_screen = Screen::Main;
+            return Action::None;
+        }
+        if (b == Btn::Left || b == Btn::Up) {
+            m_user_cursor = (m_user_cursor + n - 1) % n;
+            return Action::None;
+        }
+        if (b == Btn::Right || b == Btn::Down) {
+            m_user_cursor = (m_user_cursor + 1) % n;
+            return Action::None;
+        }
+        if (b == Btn::A) {
+            auto sel = m_users[m_user_cursor];
+            const bool launch = m_user_launch_after;
+            const u64 app = m_user_launch_app_id;
+
+            SetUser(sel.uid, sel.nickname);
+            menu::smi::SetUser(sel.uid);
+
+            CloseUserSelect();
+            m_screen = Screen::Main;
+
+            if (launch && app != 0) {
+                out_app_id = app;
+                return Action::LaunchApp;
+            }
+            SetStatus(T("User switched"));
+            return Action::None;
+        }
+        if (b == Btn::X) {
+            return Action::OpenUserPage;
+        }
+        return Action::None;
+    }
+
+    void Menu::DrawUserSelect() {
+        const Theme &t = m_theme.Current();
+        const int W = gfx::Gfx::Width, H = gfx::Gfx::Height;
+
+        m_gfx->FillRect(0, 0, W, H, WithAlpha(t.bg_bottom, 240));
+
+        m_gfx->TextCentered(FontSize::Title, W / 2, 70, t.title, T("Who is playing?"));
+        m_gfx->TextCentered(FontSize::Small, W / 2, 120, t.dim,
+                            m_user_launch_after ? T("Select a profile to start the game")
+                                                : T("Select a profile to use for save data"));
+
+        const int n = (int)m_users.size();
+        if (n == 0) {
+            m_gfx->TextCentered(FontSize::Normal, W / 2, H / 2, t.dim, T("No user profiles found"));
+            DrawHint({ {{"b"}, "Back"} });
+            return;
+        }
+
+        const int card_w = 180, card_h = 240;
+        const int gap = 24;
+        const int tot_w = n * card_w + (n - 1) * gap;
+        int start_x = (W - tot_w) / 2;
+        if (tot_w > W - 80) {
+            start_x = W / 2 - m_user_cursor * (card_w + gap) - card_w / 2;
+        }
+        const int cy = 200;
+
+        for (int i = 0; i < n; i++) {
+            const int cx = start_x + i * (card_w + gap);
+            if (cx + card_w < -40 || cx > W + 40) continue;
+
+            const bool is_sel = (i == m_user_cursor);
+            const auto &u = m_users[i];
+
+            if (is_sel) {
+                m_gfx->FillRect(cx - 4, cy - 4, card_w + 8, card_h + 8, t.accent);
+                m_gfx->FillRect(cx, cy, card_w, card_h, t.bg_top);
+            } else {
+                m_gfx->FillRect(cx, cy, card_w, card_h, WithAlpha(t.bg_top, 160));
+            }
+
+            const int icon_size = 120;
+            const int ix = cx + (card_w - icon_size) / 2;
+            const int iy = cy + 20;
+            if (u.icon) {
+                m_gfx->DrawImage(u.icon, ix, iy, icon_size, icon_size, 255);
+                m_gfx->FillRect(ix - 1, iy - 1, icon_size + 2, 1, WithAlpha(t.fg, 80));
+                m_gfx->FillRect(ix - 1, iy + icon_size, icon_size + 2, 1, WithAlpha(t.fg, 80));
+                m_gfx->FillRect(ix - 1, iy, 1, icon_size, WithAlpha(t.fg, 80));
+                m_gfx->FillRect(ix + icon_size, iy, 1, icon_size, WithAlpha(t.fg, 80));
+            } else {
+                m_gfx->FillRect(ix, iy, icon_size, icon_size, WithAlpha(t.dim, 100));
+                m_gfx->TextCentered(FontSize::Large, ix + icon_size / 2, iy + icon_size / 2 - 16, t.fg, "?");
+            }
+
+            const std::string name_disp = Ellipsize(u.nickname, card_w - 16, FontSize::Normal);
+            m_gfx->TextCentered(FontSize::Normal, cx + card_w / 2, cy + 155,
+                                is_sel ? t.fg : t.dim, name_disp.c_str());
+
+            if (u.is_current) {
+                const int bw = card_w - 40;
+                const int bx = cx + 20;
+                const int by = cy + 195;
+                m_gfx->FillRect(bx, by, bw, 26, is_sel ? t.accent : WithAlpha(t.dim, 140));
+                m_gfx->TextCentered(FontSize::Small, cx + card_w / 2, by + 4,
+                                    is_sel ? t.bg_bottom : t.fg, T("Active"));
+            }
+        }
+
+        DrawHint({ {{"left","right"}, "Choose"}, {{"a"}, "Select"}, {{"b"}, "Back"} });
+    }
 } // namespace sl::menu::ui

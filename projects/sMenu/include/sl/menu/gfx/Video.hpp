@@ -1,6 +1,5 @@
 #pragma once
-#include <SDL3/SDL.h>
-#include <SDL3_mixer/SDL_mixer.h>
+#include <SDL2/SDL.h>
 #include <switch.h>
 #include <atomic>
 #include <mutex>
@@ -85,9 +84,8 @@ namespace sl::menu::gfx {
 
         void DoSeek(double seconds);
         void DecodeAudio(AVPacket *pkt, AVFrame *frame);
-        static void SDLCALL MixTrampoline(void *self, MIX_Mixer *mixer, const SDL_AudioSpec *spec,
-                                          float *pcm, int samples);
-        void Mix(float *pcm, int samples);
+        static void MixTrampoline(void *self, Uint8 *stream, int len);
+        void Mix(Uint8 *stream, int len);
 
         Gfx *m_gfx = nullptr;
         std::string m_path;

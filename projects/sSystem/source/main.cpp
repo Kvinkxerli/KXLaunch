@@ -425,13 +425,9 @@ static void RunPendingAction() {
     switch (p) {
         case Pending::LaunchApp: {
             EnsureUser();
-            // Picked for this launch only; the menu keeps its own user.
             AccountUid player = g_SelectedUser;
-            if (ShouldAskUser(g_PendingAppId) && !PickUser(player)) {
-                DaemonLog("app: launch 0x%016lx cancelled at player select", g_PendingAppId);
-                LaunchMenu();
-                break;
-            }
+            // Native profile selection is handled cleanly in sMenu without prompting
+            // for unlinked Nintendo Accounts. Launch directly with the selected user.
             if (app::g_AppRunning) app::Terminate();
             CleanupHbOverride();   // dropping an override before a normal launch
             if (const Result rc = app::Launch(g_PendingAppId, player); R_FAILED(rc)) {
@@ -1061,8 +1057,10 @@ namespace ams {
         else
             accountGetPreselectedUser(&g_SelectedUser);
         if (!accountUidIsValid(&g_SelectedUser)) {
-            AccountUid picked;
-            if (PickUser(picked)) g_SelectedUser = picked;
+            s32 count = 0;
+            AccountUid uids[ACC_USER_LIST_SIZE];
+            if (R_SUCCEEDED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &count)) && count > 0)
+                g_SelectedUser = uids[0];
         }
 
         // Before the menu, so a request left behind by a crash or a power cut

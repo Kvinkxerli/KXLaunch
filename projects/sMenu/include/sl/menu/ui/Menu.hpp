@@ -18,7 +18,6 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <initializer_list>
 #include <atomic>
 #include <mutex>
@@ -59,8 +58,6 @@ namespace sl::menu::ui {
         // which is also what ItemKey uses to tie the two together.
         WidgetTile,
         FileManager,   // browse and manage the SD card (Menu_Files.cpp)
-        Bluetooth,     // radio on/off and audio device pairing (Menu_Screens.cpp)
-        Collection,    // a user collection; A opens it (opt-in, Theming)
     };
 
     // What the box-art worker is doing (see Menu::DrawFetchStatus). Stages run
@@ -185,6 +182,7 @@ namespace sl::menu::ui {
         // doesn't care what screen is currently up. Does nothing otherwise.
         Action OnHomeButton(u64 &out_app_id);
 
+        // Draw the current frame.
         void Render();
 
         void SetSuspendedApp(u64 app_id);
@@ -199,10 +197,6 @@ namespace sl::menu::ui {
         void SetLoading(bool v) { m_loading = v; }
         // Right stick, pushed in every frame by main(). Only Flow reads it.
         void SetRightStick(float x, float y) { m_rstick_x = x; m_rstick_y = y; }
-        // ZL and ZR both held, polled each frame: a second of it blows the
-        // layout up (Menu_Boom.cpp).
-        void SetTriggers(bool both) { m_trig_held = both; }
-        bool UsbTransfer() const { return m_usb_mtp; }   // start the MTP server at all
         void SetUser(AccountUid uid, const char *nickname);
         void SetStatus(const char *msg);
 
@@ -227,14 +221,21 @@ namespace sl::menu::ui {
         // nothing waiting, and clears itself when it returns anything else.
         Action TakePendingAction(u64 &out_app_id);
 
+        void OpenUserSelect(bool launch_after = false, u64 app_id = 0);
+        bool IsUserSelectOpen() const;
+        void PauseAudio();
+        void ResumeAudio();
+        bool IsAnimating() const;
+
     private:
         enum class Screen { Oobe, Welcome, Main, Theming, Themes, ThemeEditor, ColorPicker,
                             Fonts, Widgets, WidgetOptions, Keyboard, Music, Homebrew, About,
                             SysEntries, Power, Payloads, Album, FlowMenu, FlowSettings, Files,
-                            Network, CoverPicker, Bluetooth,
+                            Network, CoverPicker,
                             // Deck: its side menu, the full-library grid, and the
                             // reader a news card opens into.
-                            DeckMenu, DeckLibrary, DeckNews };
+                            DeckMenu, DeckLibrary, DeckNews,
+                            UserSelect };
         enum class Dialog { None, ConfirmCloseForLaunch, ConfirmCloseGame, ConfirmPower,
                             ConfirmRetroArch, ConfirmDelete,
                             CrashReport };   // a notice: one OK, no choice
@@ -277,23 +278,6 @@ namespace sl::menu::ui {
         // nifm answers over IPC, so the values are polled on a timer and cached
         // rather than read per frame.
         Action OnButtonNetwork(Btn b);
-        // Bluetooth: the radio, and pairing audio devices (headphones,
-        // speakers). Controllers pair through the Controllers entry.
-        struct BtDevice { BtdrvAddress addr; std::string name; bool connected = false; };
-        struct BtStatus {
-            bool ok = false;           // btm:sys available
-            bool audio = false;        // 13.0.0+: audio devices can be paired
-            bool radio = false, searching = false;
-            std::vector<BtDevice> paired, found;
-        };
-        BtStatus m_bt{};
-        int      m_bt_cursor = 0;
-        u64      m_bt_tick = 0;
-        bool     m_bt_init = false;
-        void   RefreshBluetooth(bool force);
-        int    BtRowCount() const;
-        void   DrawBluetooth();
-        Action OnButtonBluetooth(Btn b);
         void   DrawNetwork();
         void   RefreshNetwork(bool force);
         struct NetStatus {
@@ -329,7 +313,7 @@ namespace sl::menu::ui {
         bool                     m_payloads_scanned = false;
         std::string              m_payload_path;    // set on Action::PowerPayload
         Action      m_power_confirm = Action::None; // what ConfirmPower will run
-        std::string m_dialog_title;
+        std::string m_dialog_title;                 // dialog heading
         std::string m_dialog_note;                  // optional line under it
 
         // ---- play statistics (pdm) -----------------------------------------
@@ -392,17 +376,6 @@ namespace sl::menu::ui {
         bool   m_upd_available = false;
         std::string m_upd_latest;         // e.g. "v0.6.0" when an update is found
         int    m_about_scroll  = 0;       // first visible changelog line in About
-        // Anonymous online count (opt-out, Theming). While the menu is up it
-        // posts a random install id and the version every few minutes; the
-        // server only counts distinct ids. Nothing else is sent.
-        static void PingTrampoline(void *self);
-        void   PollPing();
-        Thread m_ping_thread{};
-        bool   m_ping_running = false;
-        std::atomic<bool> m_ping_done{false};
-        u64    m_ping_tick    = 0;
-        bool   m_online_count = true;     // setting (persisted)
-        bool   m_usb_mtp = true;          // setting (persisted): USB file transfer (MTP)
         Action OnButtonThemes(Btn b);
         Action OnButtonEditor(Btn b);
         Action OnButtonColorPicker(Btn b);
@@ -636,42 +609,10 @@ namespace sl::menu::ui {
         void DrawMainGrid();        // page of icon tiles
         void DrawMainCover();       // fullscreen single-cover pager
         void DrawMainShelf();       // Xbox-360-style uniform cover row
-        void DrawMainShelfPs();     // PS4-style flat tile row (Shelf's default)
         void DrawMainXmb();          // PSP/PS3 cross-media bar
         void DrawMainFlow();         // WiiFlow-style 3D coverflow
         int  FlowItemAt(int px, int py) const;  // box under a touch, or -1
         float m_rstick_x = 0.0f, m_rstick_y = 0.0f;
-
-        // Layout explosion (Menu_Boom.cpp). src: the piece's rect in the
-        // capture atlas; hx,hy: where it sat on screen; x0,y0,a0: where it
-        // was when reassembly began; ride: seconds left travelling with the
-        // scroll before it falls; home_ok: from the first capture, so it has a
-        // place to go back to. depth > 0: a 3D box (images, cards) that
-        // tumbles about rx, ry and breaks on a hard hit; nocrack: seconds
-        // before a fresh fragment may break again.
-    public:
-        struct BoomPiece {
-            SDL_FRect src; float hx, hy, x, y, vx, vy, a, va, x0, y0, a0, delay, ride;
-            float rx, ry, vrx, vry, rx0, ry0, depth, nocrack;
-            bool home_ok, crack;
-        };
-    private:
-        std::vector<BoomPiece> m_boom;
-        std::unordered_set<u64> m_boom_keys;               // what is already flying
-        std::unordered_map<u64, SDL_FPoint> m_boom_prev;   // last capture, for the scroll speed
-        bool  m_trig_held = false, m_trig_spent = false, m_boom_scroll_done = false;
-        u64   m_trig_tick = 0;
-        int   m_boom_state = 0;                            // off, flying, back
-        int   m_boom_scrolled = 0;                         // steps taken, undone on the way back
-        Btn   m_boom_dir = Btn::Down;
-        float m_boom_ox = 0, m_boom_oy = 0, m_boom_vx = 0, m_boom_vy = 0;
-        u64   m_boom_tick = 0, m_boom_last = 0, m_boom_step = 0;
-        void PollBoom();
-        bool DrawBoom();                                   // true: it drew the frame
-        void DrawBoomFire(float t);
-        bool BoomCapture(bool blast);
-        void StepBoom(float dt);
-        void BoomReassemble();
 
         // Animated position of the flow row, in item units.
         float m_flow_scroll = 0.0f;
@@ -720,12 +661,6 @@ namespace sl::menu::ui {
         // HeroArt's own definition, Menu_Deck.cpp.
         std::unordered_map<u64, SDL_Texture *> m_hero_art;
         SDL_Texture *HeroArt(const MenuItem &it);
-        // Blurred cover behind an upright cover on the wide Deck tile (cached
-        // for one entry; Blurred makes a new texture every call).
-        SDL_Texture *DeckHeroFill(const MenuItem &it, SDL_Texture *cov);
-        std::string  m_deck_fill_key;
-        SDL_Texture *m_deck_fill = nullptr;
-        int  DeckLibTabCount() const;
         int m_cover_budget  = 6;  // finished art to upload this frame
         // Set every time a cover is decoded, so the notice shows only while the
         // cache is actually being built and disappears on its own after.
@@ -799,12 +734,7 @@ namespace sl::menu::ui {
         // covers/<titleid>.jpg and are picked up by FlowCover on the next frame.
         // The key is read from config/steamgriddb.txt and never ships with the
         // menu; with no key the whole feature stays dormant.
-        // for_backdrop: wanted for the screenshot background, so screenshots
-        // are fetched even when a box scan already exists, and tried once per
-        // session on its own account rather than Flow's.
-        void   StartCoverFetch(u64 app_id, const std::string &name, bool for_backdrop = false);
-        std::unordered_set<u64> m_bd_fetch_tried;
-        bool   m_cover_force_shots = false;
+        void   StartCoverFetch(u64 app_id, const std::string &name);
         void   PollCoverFetch();
         static void CoverFetchTrampoline(void *self);
         // What the fetcher is doing, so it is visible rather than silent. The
@@ -987,16 +917,6 @@ namespace sl::menu::ui {
         SDL_Texture *m_bd_cur = nullptr, *m_bd_old = nullptr;
         u64          m_bd_tick = 0, m_bd_moved = 0;
         bool         m_bd_pending = false;
-        // Screenshot backgrounds: one decode at a time off the main thread
-        // (a 1080p JPEG stalls a frame), and titles without one remembered.
-        Thread            m_bdj_thread {};
-        std::atomic<bool> m_bdj_done { false };
-        bool              m_bdj_running = false;
-        u64               m_bdj_id = 0;
-        char              m_bdj_path[96] = {};
-        SDL_Surface      *m_bdj_surf = nullptr;
-        std::unordered_set<u64> m_bd_noshot;
-        static void BackdropDecodeTrampoline(void *self);
         // Packed-layout queries, all answered from BuildTiles so scrolling,
         // touch and navigation can never disagree with what was drawn.
         // Item index under a touch point (or -1), for touch-to-select/launch.
@@ -1015,8 +935,6 @@ namespace sl::menu::ui {
         void DrawTheming();
         std::vector<int> ThemingRows() const;   // visible Theming rows
         bool SgdbKeyPresent();                  // loads the key on first ask
-        // SteamGridDB will actually be asked: switched on and given a key.
-        bool SgdbActive() { return m_sgdb_enabled && SgdbKeyPresent(); }
         void DrawThemes();
         void DrawEditor();
         void DrawColorPicker();
@@ -1164,13 +1082,6 @@ namespace sl::menu::ui {
         // Shelf draws portrait 2:3 tiles instead of square ones, using the
         // fetched box art when a game has it. Shares the cover cache with Flow.
         bool      m_shelf_vertical = false;
-        // Shelf's look: the PS4 home screen's flat tile row (default) or the
-        // Xbox 360's 3D library.
-        bool      m_shelf_ps = true;
-        // What fills the background behind Line, Cover and Shelf: nothing, the
-        // selected game's icon blurred, or one of its screenshots (PS4 style).
-        enum class Backdrop { Off, Icon, Screenshot };
-        Backdrop  m_backdrop = Backdrop::Screenshot;
         // Whether moving past either end of the list loops round to the other.
         // On by default, which is how every layout has always behaved.
         bool      m_wrap_nav = true;
@@ -1183,47 +1094,13 @@ namespace sl::menu::ui {
         // shows them - it gives them a column each, which is the whole point -
         // but a few thousand ROMs poured into the Grid or the Deck buries the
         // games they sit next to, so everywhere else is opt-in.
+        bool      m_shortcuts_everywhere = false;
         // RetroArch playlists at all (beta, opt-in behind a warning).
         bool      m_retroarch = false;
         // Active name filter, empty when not searching. Deliberately not
         // persisted: a menu that opened still filtered, with no obvious way
         // back, would read as a menu that had lost your games.
         std::string m_search;
-        // Collections (opt-in): named lists of ItemKeys, per user. Shown as
-        // folder entries; opening one filters the list to its members, the
-        // same way a search does. Not persisted, like the search.
-        // playlist: a RetroArch playlist's folder, made by RebuildItems, never saved.
-        struct Collection { std::string name; std::vector<std::string> keys; bool playlist = false; };
-        bool        m_collections = false;   // setting (persisted)
-        std::vector<Collection> m_colls;
-        std::string m_coll_open;              // empty = not inside one
-        std::string m_kb_key;                 // ItemKey for Kb_CollNew
-        void LoadCollections();
-        void SaveCollections();
-        int  CollIndex(const std::string &name) const;
-        void OpenCollection(const std::string &name);   // "" closes
-        // Members of a folder leave the top level; each folder keeps its first
-        // four for the mosaic face (built lazily, rebuilt as icons stream in).
-        struct FolderArt { std::vector<MenuItem> peek; int count = 0;
-                           SDL_Texture *tex = nullptr; int have = 0; SDL_Color plate{}; };
-        std::unordered_map<std::string, FolderArt> m_folder_art;
-        std::vector<MenuItem> m_tucked;       // games filed in folders (Random still picks them)
-        // Hidden games (ItemKeys, per user); Theming > Show hidden brings them back.
-        std::unordered_set<std::string> m_hidden;
-        bool m_show_hidden = false;           // session only
-        void LoadHidden();
-        void SaveHidden();
-        // A game's or homebrew's icon, or a folder's mosaic; nullptr otherwise.
-        SDL_Texture *ItemArt(const MenuItem &it);
-    public:
-        // Started after repeated crashes: no Lua widgets this run.
-        void SetSafeMode(bool on) { m_safe_mode = on; }
-    private:
-        // Keeps the per-title art caches (covers, Deck hero art, box wraps,
-        // back panels) to the titles around the cursor in every layout, and
-        // drops all of it when the heap runs low. See Menu.cpp.
-        void TrimArt();
-        bool m_safe_mode = false;
         // Periodic memory snapshot; see the trace block in Render().
         bool m_memtrace_on   = false;
         u64  m_memtrace_tick = 0;
@@ -1233,7 +1110,7 @@ namespace sl::menu::ui {
         int  ShelfTileH() const { return m_shelf_vertical ? 228 : 208; }
         int  ShelfPitch() const { return ShelfTileW() + kShelfGapPx; }
         static constexpr int kShelfGapPx = 20;
-        UiMode    m_ui_mode = UiMode::Shelf;  // main-screen layout (default)
+        UiMode    m_ui_mode = UiMode::Line;   // main-screen layout (default: Line)
         // Language override; "auto" follows the console. Applied through
         // LocaleInit, which rebuilds the string table in place.
         char      m_lang[8] = "auto";
@@ -1318,7 +1195,7 @@ namespace sl::menu::ui {
         std::vector<OptionEntry> m_options;
         // Which submenu the overlay is showing instead of the entry's own
         // options. B steps back out of one instead of closing the overlay.
-        enum OptSub { Sub_None = 0, Sub_Widgets, Sub_Collections };
+        enum OptSub { Sub_None = 0, Sub_Widgets };
         int m_options_sub = Sub_None;
         bool m_options_open   = false;
         int  m_options_cursor = 0;
@@ -1380,15 +1257,7 @@ namespace sl::menu::ui {
         float m_edit_scroll  = 0.0f; // animated scroll position for the editor
         int m_editing_theme  = -1; // global index of the custom theme being edited
         int m_oobe_step      = 0;
-        static constexpr int kOobeSteps = 6;
-        // System modules set to start at boot (atmosphere/contents/*/flags/
-        // boot2.flag), by name where they say one. Many hook into qlaunch and
-        // are the usual cause of crashes and freezes reported against sLaunch,
-        // so setup warns about them and existing installs get a one-time notice.
-        std::vector<std::string> BootModules();
-        std::vector<std::string> m_boot_modules;   // scanned when setup reaches the warning
-        bool m_sysmod_checked = false;
-        void CheckSysmoduleNotice();
+        static constexpr int kOobeSteps = 5;
         float        m_oobe_gallery = 0.0f;    // layout gallery position
         float        m_oobe_list    = 0.0f;    // theme list position
         SDL_Texture *m_oobe_prev[8] = {};      // layout screenshots, loaded lazily
@@ -1499,8 +1368,21 @@ namespace sl::menu::ui {
         char       m_nickname[33] = "Player";
         char       m_status[128]  = "";
         u64        m_status_tick  = 0;
-        u64        m_status_secs  = 3;   // how long the current status stays up
-        bool       m_upd_told     = false;   // home notice shown for m_upd_latest
+
+        struct UserEntry {
+            AccountUid  uid = {};
+            char        nickname[33] = {};
+            SDL_Texture *icon = nullptr;
+            bool        is_current = false;
+        };
+        std::vector<UserEntry> m_users;
+        int  m_user_cursor = 0;
+        bool m_user_launch_after = false;
+        u64  m_user_launch_app_id = 0;
+
+        void CloseUserSelect();
+        void DrawUserSelect();
+        Action OnButtonUserSelect(Btn b, u64 &out_app_id);
 
         static constexpr int VisibleRows = 9;
     };

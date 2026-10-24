@@ -3,7 +3,7 @@
 #include <sl/menu/ui/Locale.hpp>
 #include <sl/menu/net/Http.hpp>
 #include <sl/smi/Protocol.hpp>
-#include <SDL3_image/SDL_image.h>
+#include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -332,7 +332,7 @@ namespace sl::menu::ui {
     void Menu::AddWidgetTile(int widget_index) {
         widgets::IWidget *w = m_widgets.At(widget_index);
         if (!w) return;
-        const std::string key = "w" + w->Name();
+        const std::string key = "w" + std::string(w->Name());
         TileCfg &c = TileCfgFor(key);
         if (c.w == 0) { c.w = 2; c.h = 2; }
         SaveTileCfg();
@@ -445,7 +445,7 @@ namespace sl::menu::ui {
         // natural height instead and gets scaled to fit, which is why an old
         // widget still works - it just does not fill the tile.
         if (!m_tile_wscratch) {
-            m_tile_wscratch = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32,
+            m_tile_wscratch = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA8888,
                                                 SDL_TEXTUREACCESS_TARGET,
                                                 kTileWidgetW, gfx::Gfx::Height);
             if (!m_tile_wscratch) return;
@@ -458,11 +458,11 @@ namespace sl::menu::ui {
         // the widget's own drawing and put back before the blit, which is the
         // part that does need clipping.
         m_gfx->FxClose();   // SDL is used directly below
-        const bool clipped = SDL_RenderClipEnabled(ren);
+        const SDL_bool clipped = SDL_RenderIsClipEnabled(ren);
         SDL_Rect saved{};
-        SDL_GetRenderClipRect(ren, &saved);
+        SDL_RenderGetClipRect(ren, &saved);
         m_gfx->FxClose();   // SDL is used directly below
-        SDL_SetRenderClipRect(ren, nullptr);
+        SDL_RenderSetClipRect(ren, nullptr);
 
         // The widget saves and restores the target around its own cache, so
         // nesting one inside ours is safe.
@@ -477,7 +477,7 @@ namespace sl::menu::ui {
         SDL_SetRenderTarget(ren, prev);
 
         m_gfx->FxClose();   // SDL is used directly below
-        SDL_SetRenderClipRect(ren, clipped ? &saved : nullptr);
+        SDL_RenderSetClipRect(ren, clipped ? &saved : nullptr);
         if (natH <= 0) return;   // nothing rendered yet (first frames)
 
         // Fit rather than stretch: a calendar grid or a clock face pulled to a
@@ -489,10 +489,10 @@ namespace sl::menu::ui {
         const int dh = std::max(1, (int)(natH * s));
 
         SDL_SetTextureAlphaMod(m_tile_wscratch, a);
-        const SDL_FRect src{ 0, 0, (float)kTileWidgetW, (float)natH };
-        const SDL_FRect dst{ r.x + (r.w - dw) / 2.0f, r.y + (r.h - dh) / 2.0f, (float)dw, (float)dh };
+        SDL_Rect src{ 0, 0, kTileWidgetW, natH };
+        SDL_Rect dst{ r.x + (r.w - dw) / 2, r.y + (r.h - dh) / 2, dw, dh };
         m_gfx->FxClose();
-        SDL_RenderTexture(ren, m_tile_wscratch, &src, &dst);
+        SDL_RenderCopy(ren, m_tile_wscratch, &src, &dst);
     }
     // One tile face: a rounded card (colour, or the artwork edge to edge),
     // soft shadow, a glow when selected, and the label on a darkened band.
@@ -579,11 +579,12 @@ namespace sl::menu::ui {
                     m_gfx->DrawImage(m_tile_pic_next, r.x, r.y, r.w, r.h,
                                      (Uint8)(a * m_tile_pic_fade));
             }
-        } else if (it.kind == ItemKind::Game || it.kind == ItemKind::Homebrew ||
-                   (it.kind == ItemKind::Collection && ItemArt(it))) {
+        } else if (it.kind == ItemKind::Game || it.kind == ItemKind::Homebrew) {
             // A game's own icon fills the tile, which is what gives the wall its
             // colour - the same job Metro gave photo and people tiles.
-            SDL_Texture *icon = ItemArt(it);
+            SDL_Texture *icon = (it.kind == ItemKind::Homebrew)
+                                  ? m_hb_icons.Get(it.hb_icon)
+                                  : m_icons.Get(it.app_id);
             // Picking a colour for a game turns its tile into the other kind of
             // Windows 8 tile: a solid block with the app's logo inset, rather
             // than artwork edge to edge. Without this the choice would be
@@ -682,7 +683,7 @@ namespace sl::menu::ui {
         const SDL_Rect band{ 0, bandTop - 4, gfx::Gfx::Width,
                              (bandBot + 4) - (bandTop - 4) };
         m_gfx->FxClose();   // SDL is used directly below
-        if (ren) SDL_SetRenderClipRect(ren, &band);
+        if (ren) SDL_RenderSetClipRect(ren, &band);
 
         struct Vis { TileRect r; int item; Uint8 a; };
         std::vector<Vis> visible;
@@ -716,7 +717,7 @@ namespace sl::menu::ui {
             for (const auto &v : visible) DrawTileFace(v.r, m_items[v.item], v.item == m_cursor, v.a, -1);
         }
         m_gfx->FxClose();   // SDL is used directly below
-        if (ren) SDL_SetRenderClipRect(ren, nullptr);
+        if (ren) SDL_RenderSetClipRect(ren, nullptr);
 
         // The selected entry's name, in the corner Metro puts its page title.
         const MenuItem &sel = m_items[m_cursor];
@@ -726,6 +727,6 @@ namespace sl::menu::ui {
         if (sel.kind == ItemKind::MusicPlayer)
             DrawStatusHint({ {{"a"}, "Open"}, {{"y"}, "Play/pause"}, {{"x"}, "Options"} });
         else
-            DrawStatusHint({ {{"a"}, "Select"}, {{"y"}, "Search"}, {{"x"}, "Options"} });
+            DrawStatusHint({ {{"a"}, "Select"}, {{"x"}, "Options"} });
     }
 } // namespace sl::menu::ui

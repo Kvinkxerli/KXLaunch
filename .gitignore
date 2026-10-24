@@ -12,6 +12,7 @@ projects/sInstaller/build/
 *.nro
 *.nacp
 slaunch.zip
+kxlaunch.zip
 slaunch-v*-sd.zip
 RELEASE_v*.md
 

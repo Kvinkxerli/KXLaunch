@@ -1,5 +1,6 @@
 #pragma once
 
+// Include real Lua 5.3 headers first
 extern "C" {
 #include "lua.h"
 #include "lauxlib.h"

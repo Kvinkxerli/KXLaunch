@@ -26,13 +26,12 @@ namespace sl::menu::ui {
     // has; a stale hand-counted number there silently makes the last row
     // untappable.
     enum { TH_Themes = 0, TH_UiMode, TH_TextPos, TH_ListIcons,
-           TH_IconPack, TH_Antialias, TH_ShelfStyle, TH_ShelfVert, TH_Backdrop, TH_TileCols, TH_TileRows,
+           TH_IconPack, TH_Antialias, TH_ShelfVert, TH_TileCols, TH_TileRows,
            TH_TdbRegion, TH_Sgdb, TH_SgdbKey, TH_FlowSet, TH_Wrap,
-           TH_Hints, TH_Counter, TH_RetroArch, TH_Collections, TH_ShowHidden, TH_Fonts,
+           TH_Hints, TH_Counter, TH_RetroArch, TH_Shortcuts, TH_Fonts,
            TH_Language, TH_Music,
            TH_Widgets, TH_Entries,
-           TH_Sleep, TH_SleepTv, TH_AskUser, TH_AutoUser,
-           TH_Welcome, TH_Updates, TH_Online, TH_Usb,
+           TH_Welcome, TH_Updates,
            TH_About, TH_Back, TH_Count };
 
     enum { EF_Background = 0, EF_Wallpaper, EF_WallpaperDim, EF_WallpaperBlur,
@@ -107,7 +106,6 @@ namespace sl::menu::ui {
         { ItemKind::WebBrowser,   "Web Browser"   },
         { ItemKind::MiiEdit,      "Mii Edit"      },
         { ItemKind::Wifi,         "Network"       },
-        { ItemKind::Bluetooth,    "Bluetooth"     },
         { ItemKind::Power,        "Power"         },
         { ItemKind::HomebrewMenu, "Homebrew menu" },
         { ItemKind::FileManager,  "Files"         },
@@ -130,9 +128,6 @@ namespace sl::menu::ui {
     // currently rendering in. They are not run through T() for the same
     // reason - "Russian" should read the same however you got here.
     struct LangOption { const char *code; const char *name; };
-    // Written once the system-module warning has been shown (setup or notice).
-    inline constexpr const char *kSysmodNoticePath = "sdmc:/slaunch/config/sysmodule_notice";
-
     inline const LangOption kLangs[] = {
         { "auto", nullptr     },   // name filled in from T("Automatic")
         { "en",   "English"   },
@@ -142,8 +137,6 @@ namespace sl::menu::ui {
         { "ru",   "Russian"   },
         { "ja",   "Japanese"  },
         { "zh",   "Chinese"   },
-        { "pt",   "Portuguese" },
-        { "tr",   "Turkish"   },
     };
     inline constexpr int kLangN = (int)(sizeof(kLangs) / sizeof(kLangs[0]));
 
@@ -200,7 +193,7 @@ namespace sl::menu::ui {
 
     enum { DeckTab_Game = 0, DeckTab_Nintendo, DeckTab_Widgets, DeckTab_Count };
     enum { DeckLib_All = 0, DeckLib_Favourites, DeckLib_Recent,
-           DeckLib_Gamecard, DeckLib_Homebrew, DeckLib_Collections, DeckLib_Count };
+           DeckLib_Gamecard, DeckLib_Homebrew, DeckLib_Count };
 
     // Which entries the Flow and Deck side menus list: everything that is
     // not already on the shelf.
@@ -267,17 +260,6 @@ namespace sl::menu::ui {
     // there, which is what keeps the three agreeing about where a tile is.
     inline constexpr int kShelfGap     = 20;
     inline constexpr int kShelfAnchorX = 88;    // left edge of the selected cover
-    // PS4 style: the selected tile big at the left, the rest small beside it.
-    inline constexpr int kPsAnchorX = 187, kPsTop = 128, kPsBig = 226, kPsSmall = 134,
-                         kPsGap = 4, kPsBand = 40;
-    // Left edge and size of row position d (0 = selected, < 0 = passed).
-    inline void PsPlace(float d, float &x, float &size) {
-        const float t = std::min(1.0f, std::abs(d));
-        size = kPsBig + (kPsSmall - kPsBig) * t;
-        if (d >= 1.0f)      x = kPsAnchorX + kPsBig + kPsGap + (d - 1.0f) * (kPsSmall + kPsGap);
-        else if (d >= 0.0f) x = kPsAnchorX + d * (kPsBig + kPsGap);
-        else                x = kPsAnchorX + d * (kPsSmall + kPsGap);
-    }
     inline constexpr int kShelfTop     = 150;   // top edge of the cover row
 
     // XMB geometry, matching RetroArch's XMB "PS3" layout.
@@ -515,13 +497,7 @@ namespace sl::menu::ui {
                        OptSort, OptCloseGame, OptPickCover, OptDismiss,
                        OptTileSize, OptTileColor, OptTileReset,
                        OptAddWidget, OptAddWidgetMenu, OptSubBack,
-                       OptRemoveWidget, OptCollMenu, OptCollToggle,
-                       OptCollNew, OptCollRename, OptCollDelete, OptHide }; 
-
-    // ---- anonymous online count (opt-out) ----------------------------------
-    inline constexpr const char *kPingUrl    = "https://hellmachine.tail10512b.ts.net/ping";
-    inline constexpr const char *kInstallId  = "sdmc:/slaunch/config/install_id";
-    inline constexpr u64         kPingEveryS = 300;
+                       OptRemoveWidget, OptLaunchAsUser }; 
 
     // ---- online update check (opt-out) -------------------------------------
         // Pluck a "key":"value" string field out of the GitHub release JSON.
@@ -677,51 +653,6 @@ namespace sl::menu::ui {
         struct LogLine { bool head; const char *text; };
         // Newest first. Headers are version tags; the rest are one-line summaries.
         inline const LogLine kChangelog[] = {
-            { true,  "v1.5.8" },
-            { false, "Sleep from the HOME button's hold menu works now" },
-            { false, "Album shows PNG screenshots, PNGShot's included" },
-            { false, "Album opens the system album straight away when the SD card has no captures" },
-            { false, "RetroArch playlists: games RetroArch left without a core show up, run with an installed core that fits" },
-            { false, "RetroArch playlists are folders in every layout, not only in XMB" },
-            { true,  "v1.5.7" },
-            { false, "Folders: X on a game > Collections files it in a folder, and each folder shows its first four games in every layout" },
-            { false, "Hide games you never play (X > Hide); Theming > Show hidden games brings them back" },
-            { false, "The menu recovers from a crash on its own instead of stopping the console with an error, with widgets and anti-aliasing off until it runs cleanly" },
-            { false, "The menu stops drawing while the console sleeps, which should fix freezes after waking up" },
-            { false, "Closing a game waits for it to really exit, so the next game always starts" },
-            { false, "Uses less memory on big libraries, especially in Deck" },
-            { false, "OpenGL build: fixed white icons in Grid, Line, Cover and Flow" },
-            { false, "Theming > USB file transfer can switch file transfer off" },
-            { false, "Theming > Start as user boots straight into an account" },
-            { false, "Sharper text with anti-aliasing on" },
-            { true,  "v1.5.5" },
-            { false, "Search in every layout: press Y and type a name" },
-            { false, "Collections: sort your games into folders (turn on in Theming > Collections)" },
-            { false, "Deck layout looks more like SteamOS: game art behind the shelf, a Collections tab in the library" },
-            { false, "Anonymous online count - a random ID and the version, nothing else (Theming > Online count)" },
-            { false, "Fixed labels missing inside scrolling grids with anti-aliasing on" },
-            { false, "The update check now tells you on the home screen when a new version is out" },
-            { true,  "v1.5.4" },
-            { false, "Bluetooth settings: turn the radio on or off, pair and connect headphones and speakers" },
-            { false, "Optional: choose who plays when you launch a game (Theming > Ask who's playing)" },
-            { false, "Fixed a crash after downloading lots of covers" },
-            { false, "Portuguese and Turkish translations, and every screen can now be translated" },
-            { false, "Setup warns about system modules, the most common cause of crashes" },
-            { true,  "v1.5.3" },
-            { false, "Works on system update 23.0.1 (built for Atmosphere 1.12.0)" },
-            { true,  "v1.5.2" },
-            { false, "Game art behind the shelf like the PS4: screenshots and key art (Theming > Background art)" },
-            { false, "PS4 Shelf keeps the games you passed visible on the left" },
-            { false, "Soft sound when the cursor moves (replace sounds/move.wav to change it)" },
-            { false, "Fixed games that pick their own players asking for the user again and again" },
-            { true,  "v1.5.0" },
-            { false, "New Shelf style like the PS4 home screen - Shelf is now the default layout" },
-            { false, "Runs on SDL3 and Vulkan: smoother 60 fps scrolling and effects" },
-            { false, "Screen timeout settings (handheld and TV) under Theming" },
-            { false, "Games no longer crash on launch when their save data is missing" },
-            { false, "Clear message when there is no space left for a game's save data" },
-            { false, "Switching accounts now launches games on the right account" },
-            { false, "Album list shows capture dates; fewer repeated box art lookups" },
             { true,  "v1.4.1" },
             { false, "Much better loading speed for Flow and the other modes" },
             { false, "Fixed homebrew launching and logging (SD card file access)" },
@@ -911,6 +842,7 @@ void main() {
             const int H = gfx::Gfx::Height;
             const float elapsed = (float)armGetSystemTick() / (float)armGetSystemTickFreq();
 
+            // Pre-compute the three palette colors.
             SDL_Color colors[3];
             colors[0] = t.fx_a;  // primary
             colors[1] = SDL_Color{255, 255, 255, 0}; // white wash
@@ -1782,57 +1714,6 @@ void main() {
             gfx->FxEnd();
         }
 
-        // Layout explosion fireball (Menu_Boom.cpp), drawn like the Ocean: flat
-        // bands in chunky pixels. A ragged ball that swells fast and burns out
-        // from white through yellow and orange to dark red, plus a shock ring
-        // racing outward. uBoom: centre x, centre y, seconds since the blast,
-        // pixel size.
-        inline constexpr const char *kBoomVs = R"(
-varying vec2 vP;
-void main() {
-    vP = aV.xy * vec2(1280.0, 720.0);
-    gl_Position = Clip(vP);
-}
-)";
-        inline constexpr const char *kBoomFs = R"(
-uniform vec4 uBoom;
-varying vec2 vP;
-float H2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float N(vec2 p) {
-    vec2 i = floor(p), f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(H2(i), H2(i + vec2(1.0, 0.0)), f.x),
-               mix(H2(i + vec2(0.0, 1.0)), H2(i + vec2(1.0, 1.0)), f.x), f.y);
-}
-void main() {
-    float px = uBoom.w;
-    vec2  p  = floor(vP / px) * px + px * 0.5;           // chunky pixels
-    vec2  d  = p - uBoom.xy;
-    float r  = length(d);
-    float t  = uBoom.z;
-    float an = atan(d.y, d.x);
-
-    float R    = 50.0 + 300.0 * (1.0 - exp(-t * 5.0));   // swells fast, then slows
-    float n    = N(vec2(an * 3.0 + 7.0, r * 0.012 - t * 2.6)) * 0.6
-               + N(vec2(an * 8.0 + 3.0, r * 0.035 - t * 4.5)) * 0.4;
-    float heat = clamp(1.0 - r / (R * (0.65 + 0.6 * n)), 0.0, 1.0);
-    heat *= clamp(1.2 - t / 0.85, 0.0, 1.0);             // burns out
-    heat  = floor(heat * 5.0) / 5.0;                     // flat bands
-
-    vec3 col = mix(vec3(0.45, 0.04, 0.0), vec3(1.0, 0.42, 0.0), step(0.2, heat));
-    col = mix(col, vec3(1.0, 0.72, 0.1), step(0.4, heat));
-    col = mix(col, vec3(1.0, 0.93, 0.45), step(0.6, heat));
-    col = mix(col, vec3(1.0, 1.0, 0.9), step(0.8, heat));
-    float a = heat > 0.0 ? 0.9 : 0.0;
-
-    float ring = step(abs(r - t * 1400.0), 10.0 + t * 20.0) * step(t, 0.55);
-    col = mix(col, vec3(1.0, 0.6, 0.2), ring);
-    a = max(a, ring * 0.85);
-    if (a <= 0.0) discard;
-    gl_FragColor = vec4(col, a);
-}
-)";
-
     // ---- per-entry tile config ----------------------------------------------
     //
     // One line per customised entry:  <ItemKey>=<w>x<h>,<rrggbb|->
@@ -2132,7 +2013,8 @@ void main() {
             if (!f) return nullptr;
             if (!CoverHeaderMatches(f, src, tw, th)) { fclose(f); return nullptr; }
 
-            SDL_Surface *surf = SDL_CreateSurface(tw, th, SDL_PIXELFORMAT_RGB565);
+            SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, tw, th, 16,
+                                                               SDL_PIXELFORMAT_RGB565);
             if (!surf) { fclose(f); return nullptr; }
             // One read for the whole image when rows are packed (they are for
             // every size we cache): each read is a round trip to the card's
@@ -2145,7 +2027,7 @@ void main() {
                     ok = fread((u8 *)surf->pixels + (size_t)y * surf->pitch,
                                1, (size_t)tw * 2, f) == (size_t)tw * 2;
             fclose(f);
-            if (!ok) { SDL_DestroySurface(surf); return nullptr; }   // truncated; rebuild
+            if (!ok) { SDL_FreeSurface(surf); return nullptr; }   // truncated; rebuild
             return surf;
         }
 
@@ -2192,11 +2074,12 @@ void main() {
             SDL_Surface *raw = IMG_Load(path);
             if (!raw) return nullptr;
 
-            SDL_Surface *dst = SDL_CreateSurface(tw, th, SDL_PIXELFORMAT_RGB565);
-            if (!dst) { SDL_DestroySurface(raw); return nullptr; }
+            SDL_Surface *dst = SDL_CreateRGBSurfaceWithFormat(
+                    0, tw, th, 16, SDL_PIXELFORMAT_RGB565);
+            if (!dst) { SDL_FreeSurface(raw); return nullptr; }
 
-            SDL_BlitSurfaceScaled(raw, nullptr, dst, nullptr, SDL_SCALEMODE_LINEAR);
-            SDL_DestroySurface(raw);
+            SDL_BlitScaled(raw, nullptr, dst, nullptr);
+            SDL_FreeSurface(raw);
             return dst;
         }
 
@@ -2218,11 +2101,12 @@ void main() {
             if (ch > raw->h) ch = raw->h;
             SDL_Rect crop { (raw->w - cw) / 2, (int)((float)(raw->h - ch) * biasY), cw, ch };
 
-            SDL_Surface *dst = SDL_CreateSurface(tw, th, SDL_PIXELFORMAT_RGB565);
-            if (!dst) { SDL_DestroySurface(raw); return nullptr; }
+            SDL_Surface *dst = SDL_CreateRGBSurfaceWithFormat(
+                    0, tw, th, 16, SDL_PIXELFORMAT_RGB565);
+            if (!dst) { SDL_FreeSurface(raw); return nullptr; }
 
-            SDL_BlitSurfaceScaled(raw, &crop, dst, nullptr, SDL_SCALEMODE_LINEAR);
-            SDL_DestroySurface(raw);
+            SDL_BlitScaled(raw, &crop, dst, nullptr);
+            SDL_FreeSurface(raw);
             return dst;
         }
 

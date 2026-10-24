@@ -3,7 +3,7 @@
 #include <sl/menu/ui/Locale.hpp>
 #include <sl/menu/net/Http.hpp>
 #include <sl/smi/Protocol.hpp>
-#include <SDL3_image/SDL_image.h>
+#include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -63,6 +63,6 @@ namespace sl::menu::ui {
         if (!m_show_counter) pos[0] = '\0';
         m_gfx->TextCentered(FontSize::Small, cx, cy + size / 2 + 86, t.dim, pos);
 
-        DrawStatusHint({ {{"a"}, "Launch"}, {{"y"}, "Search"}, {{"x"}, "Options"}, {{"left","right"}, "Browse"} });
+        DrawStatusHint({ {{"a"}, "Launch"}, {{"x"}, "Options"}, {{"left","right"}, "Browse"} });
     }
 } // namespace sl::menu::ui

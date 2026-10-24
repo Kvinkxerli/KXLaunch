@@ -11,8 +11,8 @@
 // That is the honest simulation: you can see every screen and every transition,
 // and nothing pretends to have launched.
 
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <switch.h>
 
 #include <sl/menu/gfx/Gfx.hpp>
@@ -84,16 +84,16 @@ namespace {
     // arrows/WASD move, Z/Enter is A, X/Backspace is B.
     Btn KeyToBtn(SDL_Keycode k) {
         switch (k) {
-            case SDLK_UP:    case SDLK_W: return Btn::Up;
-            case SDLK_DOWN:  case SDLK_S: return Btn::Down;
-            case SDLK_LEFT:  case SDLK_A: return Btn::Left;
-            case SDLK_RIGHT: case SDLK_D: return Btn::Right;
-            case SDLK_Z: case SDLK_RETURN:    return Btn::A;
-            case SDLK_X: case SDLK_BACKSPACE: return Btn::B;
-            case SDLK_C: return Btn::X;
-            case SDLK_V: return Btn::Y;
-            case SDLK_Q: return Btn::L;
-            case SDLK_E: return Btn::R;
+            case SDLK_UP:    case SDLK_w: return Btn::Up;
+            case SDLK_DOWN:  case SDLK_s: return Btn::Down;
+            case SDLK_LEFT:  case SDLK_a: return Btn::Left;
+            case SDLK_RIGHT: case SDLK_d: return Btn::Right;
+            case SDLK_z: case SDLK_RETURN:    return Btn::A;
+            case SDLK_x: case SDLK_BACKSPACE: return Btn::B;
+            case SDLK_c: return Btn::X;
+            case SDLK_v: return Btn::Y;
+            case SDLK_q: return Btn::L;
+            case SDLK_e: return Btn::R;
             case SDLK_1: return Btn::Minus;
             case SDLK_2: return Btn::Plus;
             default:     return Btn::None;
@@ -104,12 +104,17 @@ namespace {
     // 1280*ss x 720*ss, so this is a genuinely high-resolution capture rather
     // than an upscaled 720p one.
     void Screenshot(SDL_Renderer *r, int ss) {
-        SDL_Surface *shot = SDL_RenderReadPixels(r, nullptr);
-        if (!shot) {
+        int w = 0, h = 0;
+        SDL_GetRendererOutputSize(r, &w, &h);
+        SDL_Surface *shot = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32,
+                                                           SDL_PIXELFORMAT_ARGB8888);
+        if (!shot) { fprintf(stderr, "[sim] screenshot alloc failed\n"); return; }
+        if (SDL_RenderReadPixels(r, nullptr, SDL_PIXELFORMAT_ARGB8888,
+                                 shot->pixels, shot->pitch) != 0) {
             fprintf(stderr, "[sim] SDL_RenderReadPixels: %s\n", SDL_GetError());
+            SDL_FreeSurface(shot);
             return;
         }
-        const int w = shot->w, h = shot->h;
         mkdir("shots", 0777);
         char path[128];
         for (int i = 1; i < 10000; i++) {
@@ -117,11 +122,11 @@ namespace {
             struct stat st;
             if (stat(path, &st) != 0) break;
         }
-        if (IMG_SavePNG(shot, path))
+        if (IMG_SavePNG(shot, path) == 0)
             printf("[sim] wrote %s (%dx%d, %dx supersample)\n", path, w, h, ss);
         else
             fprintf(stderr, "[sim] IMG_SavePNG: %s\n", SDL_GetError());
-        SDL_DestroySurface(shot);
+        SDL_FreeSurface(shot);
     }
 
     void Usage(const char *argv0) {
@@ -193,12 +198,11 @@ int main(int argc, char **argv) {
 
     // WSL usually has no ALSA device, and SDL_mixer prints a wall of errors
     // before failing. The menu already copes with the mixer not opening, so the
-    // only thing lost is the noise. An explicit SDL_AUDIO_DRIVER still wins
-    // (the environment overrides a default-priority hint).
+    // only thing lost is the noise. An explicit SDL_AUDIODRIVER still wins.
     // Windows has working audio, so there the menu's music and sound effects
     // play as they do on the console.
 #ifndef _WIN32
-    SDL_SetHintWithPriority(SDL_HINT_AUDIO_DRIVER, "dummy", SDL_HINT_DEFAULT);
+    SDL_setenv("SDL_AUDIODRIVER", "dummy", 0);
 #endif
 
 #ifdef _WIN32
@@ -336,11 +340,7 @@ int main(int argc, char **argv) {
             ui.SetApps(std::move(apps));
         }
 
-        SDL_Joystick *joy = nullptr;   // SDL3 opens by instance ID: the first pad
-        if (SDL_JoystickID *ids = SDL_GetJoysticks(nullptr)) {
-            if (ids[0]) joy = SDL_OpenJoystick(ids[0]);
-            SDL_free(ids);
-        }
+        SDL_Joystick *joy = SDL_JoystickOpen(0);
 
         // Auto-repeat, matching the console host: one initial delay then an
         // accelerating repeat, so held-direction behaviour is the same thing
@@ -378,14 +378,13 @@ int main(int argc, char **argv) {
         int  mouse_x = 0, mouse_y = 0;
         bool was_touching = false;
         int  last_tx = 0, last_ty = 0;
-        u64  trig_until = 0;             // --nav 't' holds both triggers until then
 
         while (running) {
             SDL_Event ev;
             while (SDL_PollEvent(&ev)) {
-                if (ev.type == SDL_EVENT_QUIT) { running = false; continue; }
-                if (ev.type == SDL_EVENT_KEY_DOWN && !ev.key.repeat) {
-                    const SDL_Keycode k = ev.key.key;
+                if (ev.type == SDL_QUIT) { running = false; continue; }
+                if (ev.type == SDL_KEYDOWN && !ev.key.repeat) {
+                    const SDL_Keycode k = ev.key.keysym.sym;
                     if (k == SDLK_ESCAPE)  { running = false; continue; }
                     if (k == SDLK_F12)     { Screenshot(gfx.Renderer(), gfx.Supersample()); continue; }
                     if (k == SDLK_F10)     { ui.ToggleDebugOverlay(); continue; }
@@ -396,7 +395,7 @@ int main(int argc, char **argv) {
                         b == Btn::Left || b == Btn::Right) continue;
                     u64 id = 0;
                     run(ui.OnButton(b, id), id);
-                } else if (ev.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN) {
+                } else if (ev.type == SDL_JOYBUTTONDOWN) {
                     static const Btn kJoy[] = {
                         Btn::A, Btn::B, Btn::X, Btn::Y, Btn::None, Btn::None,
                         Btn::L, Btn::R, Btn::None, Btn::None, Btn::Plus, Btn::Minus,
@@ -407,11 +406,11 @@ int main(int argc, char **argv) {
                     if (b == Btn::None) continue;
                     u64 id = 0;
                     run(ui.OnButton(b, id), id);
-                } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                } else if (ev.type == SDL_MOUSEBUTTONDOWN) {
                     mouse_down = true; mouse_x = ev.button.x; mouse_y = ev.button.y;
-                } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+                } else if (ev.type == SDL_MOUSEBUTTONUP) {
                     mouse_down = false;
-                } else if (ev.type == SDL_EVENT_MOUSE_MOTION) {
+                } else if (ev.type == SDL_MOUSEMOTION) {
                     mouse_x = ev.motion.x; mouse_y = ev.motion.y;
                 }
             }
@@ -435,16 +434,16 @@ int main(int argc, char **argv) {
             // Directions: keyboard state plus a real pad if one is plugged in.
             int dir_v = 0, dir_h = 0;
             {
-                const bool *ks = SDL_GetKeyboardState(nullptr);
+                const Uint8 *ks = SDL_GetKeyboardState(nullptr);
                 bool up    = ks[SDL_SCANCODE_UP]    || ks[SDL_SCANCODE_W];
                 bool down  = ks[SDL_SCANCODE_DOWN]  || ks[SDL_SCANCODE_S];
                 bool left  = ks[SDL_SCANCODE_LEFT]  || ks[SDL_SCANCODE_A];
                 bool right = ks[SDL_SCANCODE_RIGHT] || ks[SDL_SCANCODE_D];
                 if (joy) {
                     constexpr int Dead = 20000;
-                    const Uint8  hat = SDL_GetJoystickHat(joy, 0);
-                    const Sint16 ay  = SDL_GetJoystickAxis(joy, 1);
-                    const Sint16 ax  = SDL_GetJoystickAxis(joy, 0);
+                    const Uint8  hat = SDL_JoystickGetHat(joy, 0);
+                    const Sint16 ay  = SDL_JoystickGetAxis(joy, 1);
+                    const Sint16 ax  = SDL_JoystickGetAxis(joy, 0);
                     up    |= (hat & SDL_HAT_UP)    || ay < -Dead;
                     down  |= (hat & SDL_HAT_DOWN)  || ay >  Dead;
                     left  |= (hat & SDL_HAT_LEFT)  || ax < -Dead;
@@ -455,14 +454,11 @@ int main(int argc, char **argv) {
                         const float f = (float)v / 32767.0f;
                         return f < -1.0f ? -1.0f : (f > 1.0f ? 1.0f : f);
                     };
-                    ui.SetRightStick(norm(SDL_GetJoystickAxis(joy, 2)),
-                                     norm(SDL_GetJoystickAxis(joy, 3)));
+                    ui.SetRightStick(norm(SDL_JoystickGetAxis(joy, 2)),
+                                     norm(SDL_JoystickGetAxis(joy, 3)));
                 }
                 dir_v = up ? -1 : down ? 1 : 0;
                 dir_h = left ? -1 : right ? 1 : 0;
-                bool trig = ks[SDL_SCANCODE_T] || elapsed_ms() < trig_until;
-                if (joy) trig |= SDL_GetJoystickButton(joy, 8) && SDL_GetJoystickButton(joy, 9);
-                ui.SetTriggers(trig);
             }
 
             const u64 now = armGetSystemTick();
@@ -503,7 +499,6 @@ int main(int argc, char **argv) {
                     case 'm': b = Btn::Minus; break;
                     case '[': b = Btn::L;     break;
                     case ']': b = Btn::R;     break;
-                    case 't': trig_until = elapsed_ms() + 1300; break;   // hold ZL+ZR
                     default:  break;
                 }
                 nav_i++;
@@ -560,7 +555,7 @@ int main(int argc, char **argv) {
                    ts.creates, ts.slots, ts.cached, ts.cached_bytes / 1048576.0);
         }
 
-        if (joy) SDL_CloseJoystick(joy);
+        if (joy) SDL_JoystickClose(joy);
     }
 
     gfx.Exit();

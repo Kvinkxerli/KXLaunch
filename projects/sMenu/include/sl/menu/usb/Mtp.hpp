@@ -1,7 +1,7 @@
 #pragma once
 #include <switch.h>
 
-// USB file transfer: an MTP server (Atmosphere's haze, libs/haze) running for
+// USB file transfer: an MTP server (Atmosphère's haze, libs/haze) running for
 // as long as the menu is up, so plugging the console into a computer shows the
 // SD card as a drive. The menu process exits whenever it hands off to a game,
 // homebrew or a system applet, which is also exactly when the server has to

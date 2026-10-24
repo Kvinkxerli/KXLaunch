@@ -555,3 +555,14 @@ Unhidden=Снова видна
 Hidden - Theming > Show hidden games=Скрыта - Оформление > Показывать скрытые игры
 Show hidden games=Показывать скрытые игры
 X on a game: Hide=X на игре: Скрыть
+
+# --- user profiles ---
+Who is playing?=Кто играет?
+Select a profile to start the game=Выберите профиль для запуска игры
+Select a profile to use for save data=Выберите профиль для сохранений
+No user profiles found=Профили не найдены
+User switched=Пользователь изменен
+Launch as user...=Запуск от пользователя...
+Profile=Профиль
+Active=Активен
+Choose=Выбрать

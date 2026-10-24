@@ -41,7 +41,6 @@ int main() {
     assert(mkdtemp(dir) && "no temp dir");
     assert(chdir(dir) == 0);
     for (const char *d : { "sdmc:", "sdmc:/retroarch", "sdmc:/retroarch/playlists",
-                           "sdmc:/retroarch/cores", "sdmc:/retroarch/info",
                            "sdmc:/slaunch", "sdmc:/slaunch/config",
                            "sdmc:/slaunch/config/users",
                            "sdmc:/slaunch/config/users/default" })
@@ -79,29 +78,6 @@ R"JSON({
   "default_core_path": "DETECT",
   "items": [
     { "path": "/roms/x/orphan.bin", "label": "No Core Here", "core_path": "DETECT" }
-  ]
-})JSON");
-
-    // A manual scan: every entry on "DETECT" and no default core either. The
-    // core is picked from what is installed - by system, else by extension.
-    Write("sdmc:/retroarch/cores/gambatte_libretro_libnx.nro", "");
-    Write("sdmc:/retroarch/info/gambatte_libretro.info",
-          "display_name = \"Nintendo - Game Boy / Color (Gambatte)\"\n"
-          "supported_extensions = \"gb|gbc|dmg\"\n"
-          "database = \"Nintendo - Game Boy|Nintendo - Game Boy Color\"\n");
-    Write("sdmc:/retroarch/cores/mgba_libretro_libnx.nro", "");
-    Write("sdmc:/retroarch/info/mgba_libretro.info",
-          "supported_extensions = \"gba|gb|gbc\"\n"
-          "database = \"Nintendo - Game Boy Advance\"\n");
-    Write("sdmc:/retroarch/playlists/Nintendo - Game Boy Color.lpl",
-R"JSON({
-  "version": "1.5",
-  "default_core_path": "",
-  "items": [
-    { "path": "/roms/gbc/Zelda DX.gbc", "label": "Zelda DX", "core_path": "DETECT",
-      "db_name": "Nintendo - Game Boy Color.lpl" },
-    { "path": "/roms/misc/Tetris.zip#Tetris.gb", "label": "Tetris Odd", "core_path": "DETECT",
-      "db_name": "Some Other System.lpl" }
   ]
 })JSON");
 
@@ -145,13 +121,6 @@ R"JSON({
 
     // Nothing to launch and no way to guess one: left out rather than listed.
     assert(!Find(v, "No Core Here"));
-
-    const Shortcut *zelda = Find(v, "Zelda DX");
-    assert(zelda && zelda->nro == "sdmc:/retroarch/cores/gambatte_libretro_libnx.nro");
-    // No core lists that system, so the extension inside the archive decides;
-    // gambatte and mgba both take .gb, and the pick is by name, not readdir.
-    const Shortcut *tetris = Find(v, "Tetris Odd");
-    assert(tetris && tetris->nro == "sdmc:/retroarch/cores/gambatte_libretro_libnx.nro");
 
     // Legacy playlist parsed, and db_name beating the file name.
     const Shortcut *sonic = Find(v, "Sonic the Hedgehog");
