@@ -907,7 +907,7 @@ namespace sl::menu::ui {
                      m_check_updates ? T("up to date") : T("update check off"));
             m_gfx->TextCentered(FontSize::Small, cx, 158, t.dim, line);
         }
-        m_gfx->TextCentered(FontSize::Small, cx, 190, t.dim, "github.com/etonedemid/slaunch");
+        m_gfx->TextCentered(FontSize::Small, cx, 190, t.dim, "github.com/Kvinkxerli/kxlaunch--slaunch-");
 
         // "What's new" changelog (scrollable).
         const int lx = cx - 360;
@@ -1617,8 +1617,18 @@ namespace sl::menu::ui {
             m_dialog = Dialog::None;
             if (!yes) { m_pending_launch = 0; m_power_confirm = Action::None; return Action::None; }
             if (which == Dialog::ConfirmCloseForLaunch) {
-                out_app_id = m_pending_launch;
+                const u64 to_launch = m_pending_launch;
                 m_pending_launch = 0;
+                s32 n_users = 0;
+                AccountUid uids[ACC_USER_LIST_SIZE];
+                if (R_SUCCEEDED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &n_users)) && n_users > 1) {
+                    struct stat st;
+                    if (stat("sdmc:/slaunch/config/auto_user", &st) != 0) {
+                        OpenUserSelect(true, to_launch);
+                        return Action::None;
+                    }
+                }
+                out_app_id = to_launch;
                 return Action::LaunchApp;
             }
             if (which == Dialog::ConfirmCloseGame) return Action::TerminateApp;
@@ -1875,6 +1885,8 @@ namespace sl::menu::ui {
             // there the row would be a switch wired to nothing.
             if (i == TH_Shortcuts && (m_ui_mode == UiMode::XMB || !m_retroarch)) continue;
             if (i == TH_ShelfVert && m_ui_mode != UiMode::Shelf) continue;
+            // Widgets are disabled/removed in this fork.
+            if (i == TH_Widgets) continue;
             // The wall shape is only meaningful where there is a wall.
             if ((i == TH_TileCols || i == TH_TileRows) && m_ui_mode != UiMode::Grid) continue;
             v.push_back(i);
@@ -3455,6 +3467,10 @@ namespace sl::menu::ui {
             m_screen = Screen::Main;
 
             if (launch && app != 0) {
+                if (m_ui_mode == UiMode::Flow) {
+                    StartLaunchAnim(Action::LaunchApp, app);
+                    return Action::None;
+                }
                 out_app_id = app;
                 return Action::LaunchApp;
             }

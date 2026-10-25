@@ -277,8 +277,7 @@ namespace sl::menu::ui {
 
         // ---- tabs ------------------------------------------------------------
         {
-            const char *labels[DeckTab_Count] = { T("What's new"), T("Nintendo"),
-                                                  T("Widgets") };
+            const char *labels[DeckTab_Count] = { T("What's new"), T("Nintendo") };
             int w[DeckTab_Count], total = 0;
             for (int i = 0; i < DeckTab_Count; i++) {
                 w[i] = m_gfx->TextWidth(FontSize::Normal, labels[i]) + 44;
@@ -298,40 +297,7 @@ namespace sl::menu::ui {
         }
 
         // ---- cards ------------------------------------------------------------
-        if (m_deck_tab == DeckTab_Widgets) {
-            // The widgets, one per card, drawn at the card's size. A script that
-            // honours the height it is handed fills its card; one that does not
-            // draws its natural height and is clipped to the card rather than
-            // being allowed to run across the row below.
-            SDL_Renderer *ren = m_gfx->Renderer();
-            int slot = 0;
-            for (int i = 0; i < m_widgets.Count() && slot < kDeckCardsVisible; i++) {
-                widgets::IWidget *wd = m_widgets.At(i);
-                if (!wd || !m_widgets.IsEnabled(i)) continue;
-                const int x = kDeckCardX + slot * (kDeckCardW + kDeckCardGap);
-                const bool foc = (m_deck_row == 2 && slot == m_deck_card);
-                m_gfx->FillRect(x, kDeckCardY, kDeckCardW, kDeckCardH,
-                                WithAlpha(t.bg_bottom, 225));
-                if (foc) {
-                    m_gfx->FillRect(x - 2, kDeckCardY - 2, kDeckCardW + 4, 2, t.accent);
-                    m_gfx->FillRect(x - 2, kDeckCardY + kDeckCardH, kDeckCardW + 4, 2, t.accent);
-                    m_gfx->FillRect(x - 2, kDeckCardY, 2, kDeckCardH, t.accent);
-                    m_gfx->FillRect(x + kDeckCardW, kDeckCardY, 2, kDeckCardH, t.accent);
-                }
-                SDL_Rect clip { x + 10, kDeckCardY + 8, kDeckCardW - 20, kDeckCardH - 16 };
-                m_gfx->FxClose();   // SDL is used directly below
-                if (ren) SDL_RenderSetClipRect(ren, &clip);
-                wd->Render(m_gfx, t, x + 12, kDeckCardY + 10, kDeckCardW - 24,
-                           kDeckCardH - 20);
-                m_gfx->FxClose();   // SDL is used directly below
-                if (ren) SDL_RenderSetClipRect(ren, nullptr);
-                slot++;
-            }
-            if (slot == 0)
-                m_gfx->TextCentered(FontSize::Normal, gfx::Gfx::Width / 2,
-                                    kDeckCardY + 60, t.dim,
-                                    T("No widgets enabled"));
-        } else {
+        {
             const std::vector<news::Item> &cards = DeckCards();
             if (cards.empty()) {
                 const bool waiting = m_news.Busy();
@@ -434,9 +400,7 @@ namespace sl::menu::ui {
                                m_sub_scroll = 0; return true; }
 
         const std::vector<news::Item> &cards = DeckCards();
-        const int ncards = (m_deck_tab == DeckTab_Widgets)
-                         ? std::min(kDeckCardsVisible, EnabledWidgetCount())
-                         : (int)cards.size();
+        const int ncards = (int)cards.size();
 
         if (b == Btn::Down) {
             if (m_deck_row < 2) m_deck_row++;
@@ -462,7 +426,7 @@ namespace sl::menu::ui {
             if (b == Btn::Left)  { if (m_deck_card > 0) m_deck_card--; return true; }
             if (b == Btn::Right) { if (m_deck_card + 1 < ncards) m_deck_card++; return true; }
             if (b == Btn::A) {
-                if (m_deck_tab != DeckTab_Widgets && m_deck_card < (int)cards.size()) {
+                if (m_deck_card < (int)cards.size()) {
                     m_deck_reading = m_deck_card;
                     m_screen = Screen::DeckNews;
                     m_sub_scroll = 0;
@@ -911,8 +875,7 @@ namespace sl::menu::ui {
 
         // Tabs.
         if (py >= kDeckTabY - 6 && py <= kDeckTabY + kDeckTabH + 6) {
-            const char *labels[DeckTab_Count] = { T("What's new"), T("Nintendo"),
-                                                  T("Widgets") };
+            const char *labels[DeckTab_Count] = { T("What's new"), T("Nintendo") };
             int w[DeckTab_Count], total = 0;
             for (int i = 0; i < DeckTab_Count; i++) {
                 w[i] = m_gfx->TextWidth(FontSize::Normal, labels[i]) + 44;
@@ -933,9 +896,7 @@ namespace sl::menu::ui {
         // Cards.
         if (py >= kDeckCardY && py <= kDeckCardY + kDeckCardH) {
             const std::vector<news::Item> &cards = DeckCards();
-            const int ncards = (m_deck_tab == DeckTab_Widgets)
-                             ? std::min(kDeckCardsVisible, EnabledWidgetCount())
-                             : (int)cards.size();
+            const int ncards = (int)cards.size();
             if (ncards == 0) return false;
             int first = 0;
             if (m_deck_row == 2 && m_deck_card >= kDeckCardsVisible)
@@ -950,7 +911,7 @@ namespace sl::menu::ui {
                 const bool again = (m_deck_row == 2 && idx == m_deck_card);
                 m_deck_row  = 2;
                 m_deck_card = idx;
-                if (again && m_deck_tab != DeckTab_Widgets) {
+                if (again) {
                     m_deck_reading = idx;
                     m_screen = Screen::DeckNews;
                 }

@@ -1,75 +1,119 @@
 # KXLaunch
 
-<img width="64" height="64" alt="icon" src="icon.png"/> **KXLaunch** — кастомное, быстрое и энергоэффективное Home Menu для **Nintendo Switch** (форк sLaunch).
+<p align="center">
+  <img width="80" height="80" alt="KXLaunch Icon" src="icon.png"/>
+</p>
 
-[![Telegram](https://img.shields.io/badge/Telegram-@kvinkxerli-blue?logo=telegram)](https://t.me/kvinkxerli)
+<h3 align="center">Кастомное, быстрое и энергоэффективное Home Menu для Nintendo Switch</h3>
 
-<img width="1280" height="720" alt="KXLaunch Preview" src="https://github.com/user-attachments/assets/fc5fcfc0-1348-454c-a057-2459c590818a" />
-<img width="1280" height="720" alt="KXLaunch Preview 2" src="https://github.com/user-attachments/assets/25b4fedb-23fb-4c87-9cf6-0260a3c94ac2" />
-
----
-
-## 🌟 Особенности форка KXLaunch
-
-* **Нативный выбор профиля Switch:** при нажатии на игру открывается стандартное системное окно выбора профиля Switch («Кто будет играть?»), если на консоли зарегистрировано несколько аккаунтов.
-* **Исправлена инициализация сохранений:** устранена проблема падения игр на движках Unreal Engine / Unity (например, *A Hat in Time* и др.), корректно генерируются атрибуты и метаданные сохранений (`owner_id`, `Thumbnail` только для профилей).
-* **Полноценные звуковые эффекты меню:** восстановлены звуки пролистывания игр (`Move`), переключения страниц (`PageLeft`/`PageRight`), выбора и кликов (`Confirm`/`Click`/`Back`) со встроенными fallback-звуками.
-* **Режим Line по умолчанию:** минималистичный и чистый интерфейс с плавным скроллингом и низким энергопотреблением.
-* **Полная русская локализация:** интерфейс и системные подсказки переведены на русский язык (с поддержкой английского и других языков).
+<p align="center">
+  <a href="https://t.me/kvinkxerli"><img src="https://img.shields.io/badge/Telegram-@kvinkxerli-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram"/></a>
+  <a href="https://github.com/Kvinkxerli/kxlaunch--slaunch-/releases"><img src="https://img.shields.io/github/v/release/Kvinkxerli/kxlaunch--slaunch-?style=for-the-badge&color=brightgreen" alt="Releases"/></a>
+  <img src="https://img.shields.io/badge/Platform-Nintendo%20Switch-E60012?style=for-the-badge&logo=nintendoswitch&logoColor=white" alt="Nintendo Switch"/>
+  <img src="https://img.shields.io/badge/CFW-Atmosph%C3%A8re-informational?style=for-the-badge" alt="Atmosphere"/>
+</p>
 
 ---
 
-## 🎮 Основные возможности
-
-* **Темы и персонализация:** встроенные темы, поддержка пользовательских обоев, наборов иконок (включая Minimal), кастомных шрифтов (TTF/OTF/TTC) и различных режимов отображения (Line, Grid, Flow, Deck, Shelf, Cover, List, XMB).
-* **Видео-обои:** поддержка бесшовных зацикленных видео-фонов `.mp4` с аппаратным декодированием NVDEC.
-* **Интерактивные виджеты:** виджеты на базе Lua (часы, календарь, погода, крипта и др.) с поддержкой сенсорного управления.
-* **Фоновая музыка и звуки:** воспроизведение музыки в меню (MP3/OGG/FLAC) с возможностью продолжения трека, а также кастомные звуки интерфейса.
-* **Раздельные профили:** индивидуальные настройки тем, раскладок и избранного для каждого аккаунта на консоли.
-* **Передача файлов по USB (MTP):** прямое подключение к ПК по USB в меню для копирования файлов на SD-карту без перезагрузки и извлечения карты.
+<p align="center">
+  <img width="100%" alt="KXLaunch Preview Line" src="https://github.com/user-attachments/assets/fc5fcfc0-1348-454c-a057-2459c590818a" />
+</p>
+<p align="center">
+  <img width="100%" alt="KXLaunch Preview Flow" src="https://github.com/user-attachments/assets/25b4fedb-23fb-4c87-9cf6-0260a3c94ac2" />
+</p>
 
 ---
 
-## 📥 Установка
+## 🌟 Ключевые особенности KXLaunch
 
-1. Скачайте свежий архив **`kxlaunch.zip`** из релизов.
-2. Распакуйте содержимое архива в корень вашей SD-карты (`sdmc:/`), согласившись на замену файлов.
-3. Перезагрузите консоль с кастомной прошивкой (Atmosphère).
+* **⚡ Оффлайн-выбор профиля без назойливой привязки к Nintendo:**
+  При запуске игры (если на консоли 2 и более аккаунтов) открывается красивое меню выбора пользователя с аватарами и никнеймами. В отличие от стокового апплета Horizon, выбор профиля в KXLaunch **не требует привязки к аккаунту Nintendo** и не блокирует запуск игр на непривязанных или оффлайн-профилях в кастомной прошивке (CFW).
+* **🛠️ Исправление вылетов игр и авто-создание сохранений:**
+  Решена проблема крашей при первом запуске требовательных игр на движках Unreal Engine / Unity (например, *A Hat in Time* с ошибкой `0x527d4` / `NN_ABORT`). Проект корректно создает обязательные разделы сохранений (`owner_id`, `Thumbnail` только для профильных данных, `None` для системных/временных/кэш-данных).
+* **📦 Безупречный запуск Homebrew:**
+  Собственный загрузчик `hbloader` с поддержкой запуска в режиме апплета (Album) и полнопамятном режиме приложения (через donor-игру). Сгенерированы и встроены все необходимые дескрипторы `main.npdm`, исключающие вылеты в главное меню при выборе любого `.nro`.
+* **🔊 Приятные звуковые эффекты (UI SFX):**
+  Полноценное озвучивание интерфейса: перемещение по списку игр (`Move`), листание страниц (`PageLeft`/`PageRight`), выбор и запуск (`Confirm`/`Click`), возврат (`Back`).
+* **📅 Полная локализация даты и верхней панели:**
+  Дата в верхнем левом углу отображается на чистом русском языке с правильными сокращениями дней недели и месяцев (`12:00 Вс окт 25`).
+* **🧹 Очищенное и оптимизированное меню:**
+  Убраны лишние и неиспользуемые компоненты (встроенный браузер и виджеты), за счет чего меню работает максимально плавно и потребляет минимум ресурсов аккумулятора.
+* **🔄 Встроенная проверка обновлений KXLaunch:**
+  Проверка свежих релизов напрямую из репозитория проекта [Kvinkxerli/kxlaunch--slaunch-](https://github.com/Kvinkxerli/kxlaunch--slaunch-).
+* **🎨 Богатые возможности кастомизации:**
+  8 режимов интерфейса (минималистичный **Line** по умолчанию, **Grid**, **Flow** coverflow, **Deck**, **Shelf**, **Cover**, **List**, **XMB**), поддержка видео-обоев MP4 с аппаратным декодированием NVDEC, наборов иконок и TTF/OTF шрифтов.
+* **📁 USB MTP (передача файлов по кабелю):**
+  Встроенный быстрый MTP-сервер: подключайте Switch к компьютеру по USB-C и передавайте файлы напрямую на SD-карту прямо из меню.
+
+---
+
+## 🎮 Управление в меню
+
+| Кнопка | Действие |
+| :---: | :--- |
+| **A** | Запуск выбранной игры / выбор профиля / подтверждение |
+| **B** | Назад / отмена |
+| **X** | Контекстное меню (избранное, переименование, выбор обложки, порядок) |
+| **Y** | Поиск игр / фильтрация |
+| **D-Pad / Стик** | Навигация по играм и меню |
+| **L / R** | Быстрое перелистывание страниц |
+| **ZL / ZR** | Быстрый переход в начало / конец списка |
+| **- (Минус)** | Меню быстрых настроек оформления |
+
+---
+
+## 📥 Установка на Nintendo Switch
+
+1. Перейдите на страницу [Релизов](https://github.com/Kvinkxerli/kxlaunch--slaunch-/releases) и скачайте архив **`kxlaunch.zip`**.
+2. Распакуйте архив прямо в корень вашей SD-карты (`sdmc:/`), подтвердив замену файлов.
+3. Убедитесь, что на SD-карте присутствуют:
+   - `sdmc:/atmosphere/contents/0100000000001000/exefs/main` и `main.npdm` (системный демон)
+   - `sdmc:/slaunch/bin/sMenu/main` (интерфейс меню)
+   - `sdmc:/slaunch/bin/hbloader/main` и `main.npdm` (загрузчик homebrew)
+   - `sdmc:/slaunch/lang/ru.txt` (русская локализация)
+4. Перезагрузите Nintendo Switch в кастомную прошивку (Atmosphère).
 
 ---
 
 ## 🛠️ Сборка из исходников
 
-### Требования
-* Установленный **devkitPro** (`devkitA64`, `libnx`, `AtmosphereLibs`).
-* Пакеты: `switch-dev`, `switch-sdl2`, `switch-sdl2_ttf`, `switch-sdl2_image`, `switch-sdl2_mixer`, `switch-curl`, `switch-mbedtls`.
+### Необходимые инструменты
+* Установленный тулчейн **devkitPro** для Nintendo Switch:
+  * `devkitA64`
+  * `libnx`
+  * `AtmosphereLibs`
+* Библиотеки Switch:
+  `switch-dev`, `switch-sdl2`, `switch-sdl2_ttf`, `switch-sdl2_image`, `switch-sdl2_mixer`, `switch-curl`, `switch-mbedtls`.
 
-### Команды сборки
+### Команды для сборки
 ```bash
-# Сборка всех компонентов и подготовка структуры SdOut/
+# Сборка проекта и подготовка структуры SdOut/
 make
 
-# Упаковка готового релиза в kxlaunch.zip
+# Создание архива релиза kxlaunch.zip
 make package
 
-# Очистка сборки
+# Полная очистка скомпилированных файлов
 make clean
 ```
 
 ---
 
-## 💬 Контакты и обратная связь
+## 💬 Связь с автором и поддержка
 
-* **Telegram разработчика форка:** [@kvinkxerli](https://t.me/kvinkxerli)
+Если у вас возникли вопросы, предложения или пожелания по развитию KXLaunch:
+
+* **Telegram разработчика:** [@kvinkxerli](https://t.me/kvinkxerli)
+* **GitHub Issues:** [Создать тикет](https://github.com/Kvinkxerli/kxlaunch--slaunch-/issues)
 
 ---
 
-## 🙏 Благодарности и Credits
+## 🙏 Credits & Благодарности
 
-* **sLaunch (etonedemid):** оригинальный проект меню для Switch.
-* **uLaunch (Xortroll & contributors):** архитектура системного демона/апплета, ECS и NPDM (GPLv2).
-* **nx-hbloader (switchbrew):** загрузчик Homebrew (ISC).
-* **Atmosphere (haze):** протокол передачи файлов по USB MTP (GPLv2).
-* **MeepCat55:** создатель набора иконок `Minimal`.
-* **Xelu:** иконки кнопок геймпада (CC0).
-* **averne / FFmpeg (nvtegra) & SwitchWave:** аппаратное ускорение видео NVDEC (GPLv2+).
+* **sLaunch (etonedemid):** база оригинального проекта.
+* **uLaunch (Xortroll & contributors):** архитектура демон-апплет, ECS и NPDM (GPLv2).
+* **nx-hbloader (switchbrew):** базовый загрузчик Homebrew (ISC).
+* **Atmosphere (haze):** протокол передачи файлов USB MTP (GPLv2).
+* **MeepCat55:** дизайн набора иконок `Minimal`.
+* **Xelu:** векторные иконки кнопок контроллеров (CC0).
+* **averne / FFmpeg (nvtegra) & SwitchWave:** аппаратный декодер NVDEC для видео-обоев (GPLv2+).

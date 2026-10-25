@@ -455,7 +455,6 @@ namespace sl::menu::ui {
         add(ItemKind::Album,        T("Album"));
         add(ItemKind::MusicPlayer,  T("Music"));
         add(ItemKind::UserPage,     T("User Page"));
-        add(ItemKind::WebBrowser,   T("Web Browser"));
         add(ItemKind::MiiEdit,      T("Mii Edit"));
         add(ItemKind::Wifi,         T("Network"));
         add(ItemKind::Power,        T("Power"));
@@ -1084,6 +1083,17 @@ namespace sl::menu::ui {
                     m_dialog = Dialog::ConfirmCloseForLaunch;
                     return Action::None;
                 }
+                {
+                    s32 n_users = 0;
+                    AccountUid uids[ACC_USER_LIST_SIZE];
+                    if (R_SUCCEEDED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &n_users)) && n_users > 1) {
+                        struct stat st;
+                        if (stat("sdmc:/slaunch/config/auto_user", &st) != 0) {
+                            OpenUserSelect(true, it.app_id);
+                            return Action::None;
+                        }
+                    }
+                }
                 if (m_ui_mode == UiMode::Flow) {
                     StartLaunchAnim(Action::LaunchApp, it.app_id);
                     return Action::None;
@@ -1101,6 +1111,17 @@ namespace sl::menu::ui {
                     m_dialog_note.clear();
                     m_dialog = Dialog::ConfirmCloseForLaunch;
                     return Action::None;
+                }
+                {
+                    s32 n_users = 0;
+                    AccountUid uids[ACC_USER_LIST_SIZE];
+                    if (R_SUCCEEDED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &n_users)) && n_users > 1) {
+                        struct stat st;
+                        if (stat("sdmc:/slaunch/config/auto_user", &st) != 0) {
+                            OpenUserSelect(true, pick);
+                            return Action::None;
+                        }
+                    }
                 }
                 out_app_id = pick;
                 return Action::LaunchApp;
@@ -1121,7 +1142,7 @@ namespace sl::menu::ui {
             case ItemKind::Album:        OpenAlbumViewer(); return Action::None;
             case ItemKind::MusicPlayer:  OpenMusicPlayer(false); return Action::None;
             case ItemKind::UserPage:     return Action::OpenUserPage;
-            case ItemKind::WebBrowser:   return Action::OpenWebBrowser;
+            case ItemKind::WebBrowser:   return Action::None;
             case ItemKind::MiiEdit:      return Action::OpenMiiEdit;
             case ItemKind::Controllers:  return Action::OpenControllers;
             case ItemKind::HomebrewMenu: OpenHomebrewBrowser(); return Action::None;
@@ -1131,6 +1152,7 @@ namespace sl::menu::ui {
                 m_hb_launch_argv = it.hb_argv;
                 // Run as an application if a donor is set, else as an applet.
                 return m_hb_donor ? Action::LaunchHomebrewApp : Action::LaunchHomebrew;
+            case ItemKind::MediaCat:     return Action::None;
             // Retired as an entry: Network does this in the menu instead
             // of throwing you into the system applet. The kind itself has
             // to stay - it numbers the saved hide list and it is the icon
@@ -1500,8 +1522,8 @@ namespace sl::menu::ui {
             }
             case OptLaunchAsUser:
                 m_options_open = false;
-                out_app_id = sel_id;
-                return Action::LaunchApp;
+                OpenUserSelect(true, sel_id);
+                return Action::None;
             case OptRename:
                 m_options_open = false;
                 RenameSelected();   // shows the software keyboard, then rebuilds
@@ -1606,7 +1628,7 @@ namespace sl::menu::ui {
     void Menu::UpdateCheckTrampoline(void *self) {
         Menu *m = static_cast<Menu *>(self);
         std::string body;
-        if (net::Get("https://api.github.com/repos/etonedemid/slaunch/releases/latest",
+        if (net::Get("https://api.github.com/repos/Kvinkxerli/kxlaunch--slaunch-/releases/latest",
                      body, 15)) {
             std::string tag = JsonStr(body, "tag_name");
             if (!tag.empty() && CmpVer(tag.c_str(), SL_VERSION) > 0) {
@@ -1954,8 +1976,15 @@ namespace sl::menu::ui {
         time_t now = time(nullptr);
         struct tm tm_now;
         localtime_r(&now, &tm_now);
-        char clock[32];
-        strftime(clock, sizeof(clock), "%H:%M   %a %b %d", &tm_now);
+
+        static const char *const kWeekdays[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+        static const char *const kMonths[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+        const char *wday = (tm_now.tm_wday >= 0 && tm_now.tm_wday < 7) ? T(kWeekdays[tm_now.tm_wday]) : "";
+        const char *month = (tm_now.tm_mon >= 0 && tm_now.tm_mon < 12) ? T(kMonths[tm_now.tm_mon]) : "";
+
+        char clock[64];
+        snprintf(clock, sizeof(clock), "%02d:%02d   %s %s %d", tm_now.tm_hour, tm_now.tm_min, wday, month, tm_now.tm_mday);
         m_gfx->Text(FontSize::Small, 40, 16, t.dim, clock);
 
         // Right side: nickname then battery (with charging indicator), laid out

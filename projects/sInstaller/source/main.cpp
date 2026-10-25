@@ -387,7 +387,7 @@ static std::string FindZipUrl(const std::string &j) {
         size_t s = j.find('"', c);           if (s == std::string::npos) break;
         size_t e = j.find('"', s + 1);       if (e == std::string::npos) break;
         std::string url = j.substr(s + 1, e - s - 1);
-        if (url.size() >= 7 && url.compare(url.size() - 7, 7, "-sd.zip") == 0) return url;
+        if (url.size() >= 4 && url.compare(url.size() - 4, 4, ".zip") == 0) return url;
         p = e + 1;
     }
     return "";
@@ -994,7 +994,7 @@ int main() {
         // ---- online update ----
         if (screen == Screen::Checking) {
             std::string body;
-            if (!HttpGet("https://api.github.com/repos/etonedemid/slaunch/releases/latest", body)) {
+            if (!HttpGet("https://api.github.com/repos/Kvinkxerli/kxlaunch--slaunch-/releases/latest", body)) {
                 updErr = "Could not reach GitHub (no internet?)";
                 screen = Screen::Failed;
             } else {

@@ -85,6 +85,7 @@ assets: hbloader
 	done
 	@# nx-hbloader exefs served via ECS for the Homebrew menu (loads hbmenu.nro).
 	@# Applet variant (application_type=2) runs homebrew as a library applet.
+	@mkdir -p SdOut/slaunch/bin/hbloader SdOut/slaunch/bin/hbloader_app
 	@cp -f assets/hbloader/main assets/hbloader/main.npdm SdOut/slaunch/bin/hbloader/ 2>/dev/null || true
 	@# Application variant: same loader, npdm with application_type=1 so the donor
 	@# process is a real application (am grants an application proxy -> full RAM).
@@ -125,6 +126,8 @@ hbloader:
 	@echo "--- Building hbloader fork ---"
 	@$(MAKE) -C projects/hbloader
 	@cp -f projects/hbloader/hbl.nso assets/hbloader/main
+	@npdmtool projects/hbloader/hbl.json assets/hbloader/main.npdm 2>/dev/null || true
+	@npdmtool assets/hbloader/hbl_app.json assets/hbloader/main_app.npdm 2>/dev/null || true
 
 # Send the installer NRO to a running Switch via nxlink.
 # The Switch must be on the same network, running the Homebrew Menu

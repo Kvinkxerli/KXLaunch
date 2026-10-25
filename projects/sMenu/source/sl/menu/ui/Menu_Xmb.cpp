@@ -91,7 +91,7 @@ namespace sl::menu::ui {
             case XmbCat::Settings: return ItemKind::Settings;
             case XmbCat::Media:    return ItemKind::MediaCat;
             case XmbCat::User:     return ItemKind::UserPage;
-            case XmbCat::Network:  return ItemKind::WebBrowser;
+            case XmbCat::Network:  return ItemKind::Wifi;
             case XmbCat::Game:     return ItemKind::Game;
             case XmbCat::Homebrew: return ItemKind::HomebrewMenu;
             default:               return ItemKind::Settings;

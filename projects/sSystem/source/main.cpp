@@ -345,7 +345,7 @@ enum SystemAppletMessage : u32 {
     Msg_SdCardRemoved                  = 33,
 };
 
-static bool IsSleepMessage(u32 msg) {
+[[maybe_unused]] static bool IsSleepMessage(u32 msg) {
     return msg == Msg_DetectShortPressingPowerButton || msg == Msg_AutoPowerDown ||
            msg == Msg_RequestToPrepareSleep || msg == Msg_SleepRequiredByHighTemperature ||
            msg == Msg_SleepRequiredByLowBattery;
@@ -368,55 +368,7 @@ static bool ReadAutoUser(AccountUid &out) {
     return true;
 }
 
-// The system's own "who's playing" screen (the player select applet). False
-// when it was cancelled or could not be shown.
-static bool PickUser(AccountUid &out) {
-    AppletHolder sel;
-    if (R_FAILED(appletCreateLibraryApplet(&sel, AppletId_LibraryAppletPlayerSelect,
-                                           LibAppletMode_AllForeground)))
-        return false;
-    LibAppletArgs args;
-    libappletArgsCreate(&args, 0);
-    libappletArgsPush(&args, &sel);
-    appletHolderStart(&sel);
-    // The daemon is the HOME Menu, so while this screen is up it is the one
-    // that receives power and idle messages. Waiting here without reading
-    // them left an auto-sleep (or the power button) unanswered for as long
-    // as nobody picked a user.
-    while (!appletHolderCheckFinished(&sel)) {
-        u32 msg = 0;
-        while (R_SUCCEEDED(appletGetMessage(&msg))) {
-            if (IsSleepMessage(msg)) {
-                DaemonLog("power: msg %u during player select -> sleep", msg);
-                if (const Result rc = pwr::Sleep(); R_FAILED(rc))
-                    DaemonLog("power: sleep request refused rc=0x%x", rc);
-            } else if (msg == Msg_FinishedSleepSequence) {
-                DaemonLog("power: woke up");
-            }
-        }
-        svcSleepThread(16'666'666ULL);
-    }
-    struct { u64 result; AccountUid uid; } res = {};
-    libappletPopOutData(&sel, &res, sizeof(res), nullptr);
-    appletHolderClose(&sel);
-    if (res.result != 0 || !accountUidIsValid(&res.uid)) return false;
-    out = res.uid;
-    return true;
-}
 
-// Default Switch behavior: launching a game shows the player select screen
-// when the console has multiple user profiles, unless an auto_user is set.
-static constexpr const char *kAskUserPath = "sdmc:/slaunch/config/ask_user";
-static bool ShouldAskUser(u64 app_id) {
-    if (!app::WantsUser(app_id)) return false;   // games that pick their own players are left alone
-    s32 n = 0;
-    AccountUid uids[ACC_USER_LIST_SIZE];
-    if (R_FAILED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &n)) || n <= 0) return false;
-    // Default Switch behavior: if 2+ users exist on the console, always ask who is playing.
-    if (n > 1) return true;
-    struct stat st;
-    return (stat(kAskUserPath, &st) == 0);
-}
 
 static void RunPendingAction() {
     const Pending p = g_Pending;
@@ -430,14 +382,9 @@ static void RunPendingAction() {
             AccountUid auto_user;
             if (ReadAutoUser(auto_user)) {
                 player = auto_user;
-            } else if (ShouldAskUser(g_PendingAppId)) {
-                if (!PickUser(player)) {
-                    DaemonLog("app: launch 0x%016lx cancelled at player select", g_PendingAppId);
-                    LaunchMenu();
-                    break;
-                }
-                g_SelectedUser = player;
             }
+            // User selection is handled cleanly in sMenu without prompting
+            // for unlinked Nintendo Accounts. Launch directly with player.
             if (app::g_AppRunning) app::Terminate();
             CleanupHbOverride();   // dropping an override before a normal launch
             if (const Result rc = app::Launch(g_PendingAppId, player); R_FAILED(rc)) {
@@ -499,17 +446,9 @@ static void RunPendingAction() {
             LaunchMenu();
             break;
         }
-        case Pending::OpenWebBrowser: {
-            // Build a normal web-page config and start the web applet with it.
-            WebCommonConfig cfg;
-            if (R_SUCCEEDED(webPageCreate(&cfg, "https://etonedemid.github.io/slaunch/"))) {
-                webConfigSetWhitelist(&cfg, "^http*");
-                la::OpenSystemApplet(AppletId_LibraryAppletWeb, cfg.version,
-                                     &cfg.arg, sizeof(cfg.arg));
-            }
+        case Pending::OpenWebBrowser:
             LaunchMenu();
             break;
-        }
         case Pending::OpenControllers:
             // "Change grip/order" -- libnx's system helper builds the correct
             // private+public args and runs the applet itself.

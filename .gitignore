@@ -22,6 +22,7 @@ RELEASE_v*.md
 *.o
 *.d
 *.npdm
+!assets/hbloader/*.npdm
 assets/fonts/Wingdings.ttf
 projects/sInstaller/romfs/payload
 graphify-out

@@ -566,3 +566,24 @@ Launch as user...=Запуск от пользователя...
 Profile=Профиль
 Active=Активен
 Choose=Выбрать
+
+# --- date & calendar ---
+Sun=Вс
+Mon=Пн
+Tue=Вт
+Wed=Ср
+Thu=Чт
+Fri=Пт
+Sat=Сб
+Jan=янв
+Feb=фев
+Mar=мар
+Apr=апр
+May=май
+Jun=июн
+Jul=июл
+Aug=авг
+Sep=сен
+Oct=окт
+Nov=ноя
+Dec=дек

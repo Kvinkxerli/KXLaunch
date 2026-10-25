@@ -103,7 +103,6 @@ namespace sl::menu::ui {
         { ItemKind::Album,        "Album"         },
         { ItemKind::MusicPlayer,  "Music"         },
         { ItemKind::UserPage,     "User Page"     },
-        { ItemKind::WebBrowser,   "Web Browser"   },
         { ItemKind::MiiEdit,      "Mii Edit"      },
         { ItemKind::Wifi,         "Network"       },
         { ItemKind::Power,        "Power"         },
@@ -191,7 +190,7 @@ namespace sl::menu::ui {
     // Side menu.
     inline constexpr int kDeckMenuW = 372;
 
-    enum { DeckTab_Game = 0, DeckTab_Nintendo, DeckTab_Widgets, DeckTab_Count };
+    enum { DeckTab_Game = 0, DeckTab_Nintendo, DeckTab_Count };
     enum { DeckLib_All = 0, DeckLib_Favourites, DeckLib_Recent,
            DeckLib_Gamecard, DeckLib_Homebrew, DeckLib_Count };
 
