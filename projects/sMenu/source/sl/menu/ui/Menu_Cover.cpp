@@ -54,6 +54,17 @@ namespace sl::menu::ui {
 
         // Name + position of the centred item.
         const MenuItem &sel = m_items[m_cursor];
+        const bool is_run = (sel.kind == ItemKind::Game && m_suspended != 0 && sel.app_id == m_suspended);
+        if (is_run) {
+            std::string run_pill = std::string("▶ ") + T("Running") + "  (" + T("Press X to close") + ")";
+            const int rw = m_gfx->TextWidth(FontSize::Small, run_pill.c_str()) + 20;
+            const int rx = cx - rw / 2;
+            const int ry = cy + size / 2 + 10;
+            m_gfx->GlowRect(rx, ry, rw, 22, t.accent, 8);
+            m_gfx->FillRect(rx, ry, rw, 22, WithAlpha(t.accent, 220));
+            m_gfx->TextCentered(FontSize::Small, cx, ry + 2, t.bg_bottom, run_pill.c_str());
+        }
+
         m_gfx->TextCentered(FontSize::Large, cx, cy + size / 2 + 40, t.accent,
                             Ellipsize(sel.name, gfx::Gfx::Width - 200, FontSize::Large).c_str());
         char pos[28];
@@ -63,6 +74,9 @@ namespace sl::menu::ui {
         if (!m_show_counter) pos[0] = '\0';
         m_gfx->TextCentered(FontSize::Small, cx, cy + size / 2 + 86, t.dim, pos);
 
-        DrawStatusHint({ {{"a"}, "Launch"}, {{"x"}, "Options"}, {{"left","right"}, "Browse"} });
+        if (is_run)
+            DrawStatusHint({ {{"a"}, "Resume"}, {{"x"}, "Close game"}, {{"left","right"}, "Browse"} });
+        else
+            DrawStatusHint({ {{"a"}, "Launch"}, {{"x"}, "Options"}, {{"left","right"}, "Browse"} });
     }
 } // namespace sl::menu::ui

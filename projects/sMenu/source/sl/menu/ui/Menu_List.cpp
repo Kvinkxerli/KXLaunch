@@ -88,11 +88,11 @@ namespace sl::menu::ui {
                 }
             }
 
-            // The suspended game is highlighted with a faint accent pill and a
-            // filled dot so it stands out even when it isn't the selected row.
+            // The suspended game is highlighted with a faint accent pill and an
+            // accent bar so it stands out even when it isn't the selected row.
             if (running) {
-                m_gfx->FillRect(tx - 16, y - 4, lw + 150, lh + 8, WithAlpha(t.accent, 34));
-                m_gfx->FillRect(tx - 8, y + lh / 2 - 5, 10, 10, WithAlpha(t.accent, alpha));
+                m_gfx->FillRect(tx - 16, y - 4, lw + 150, lh + 8, WithAlpha(t.accent, 40));
+                m_gfx->FillRect(tx - 16, y - 4, 4, lh + 8, WithAlpha(t.accent, alpha));
             }
 
             if (sel)
@@ -101,9 +101,10 @@ namespace sl::menu::ui {
             m_gfx->Text(fs, tx, y, WithAlpha(name_col, alpha), label.c_str());
 
             if (running) {
+                std::string run_tag = std::string("▶ ") + T("Running");
                 m_gfx->Text(FontSize::Small, tx + lw + 18,
                             y + lh - m_gfx->LineHeight(FontSize::Small) - 2,
-                            WithAlpha(t.accent, alpha), "running");
+                            WithAlpha(t.accent, alpha), run_tag.c_str());
             }
         }
 
@@ -129,7 +130,14 @@ namespace sl::menu::ui {
             }
         }
 
-        DrawStatusHint({ {{"a"}, "Select"}, {{"x"}, "Options"} });
+        const bool is_run = (m_cursor >= 0 && m_cursor < (int)m_items.size() &&
+                             m_items[m_cursor].kind == ItemKind::Game &&
+                             m_suspended != 0 && m_items[m_cursor].app_id == m_suspended);
+        if (is_run) {
+            DrawStatusHint({ {{"a"}, "Resume"}, {{"x"}, "Close game"} });
+        } else {
+            DrawStatusHint({ {{"a"}, "Select"}, {{"x"}, "Options"} });
+        }
     }
     // One item as a card: its artwork (or the themed plate with the glyph,
     // or a panel with the initial), rounded, shadowed, glowing when selected,
@@ -184,8 +192,25 @@ namespace sl::menu::ui {
 
         const bool running = (it.kind == ItemKind::Game &&
                               it.app_id == m_suspended && m_suspended != 0);
-        if (running)
-            m_gfx->FillRect(x + size - 20, y + 10, 10, 10, WithAlpha(t.accent, alpha));
+        if (running) {
+            m_gfx->GlowRect(x - 2, y - 2, size + 4, size + 4, t.accent, 14);
+            const int bw = 3;
+            m_gfx->FillRect(x - bw, y - bw, size + bw * 2, bw, WithAlpha(t.accent, alpha));
+            m_gfx->FillRect(x - bw, y + size, size + bw * 2, bw, WithAlpha(t.accent, alpha));
+            m_gfx->FillRect(x - bw, y - bw, bw, size + bw * 2, WithAlpha(t.accent, alpha));
+            m_gfx->FillRect(x + size, y - bw, bw, size + bw * 2, WithAlpha(t.accent, alpha));
+
+            const char *badge_text = T("Running");
+            const int tw = m_gfx->TextWidth(FontSize::Small, badge_text);
+            const int pw = tw + 22;
+            const int ph = 24;
+            const int px = x + size - pw - 6;
+            const int py = y + 6;
+            m_gfx->GlowRect(px, py, pw, ph, t.accent, 8);
+            m_gfx->FillRect(px, py, pw, ph, WithAlpha(t.accent, alpha));
+            m_gfx->Text(FontSize::Small, px + 5, py + 3, t.bg_bottom, "▶");
+            m_gfx->Text(FontSize::Small, px + 17, py + 3, t.bg_bottom, badge_text);
+        }
         if (it.is_favourite)
             m_gfx->Text(FontSize::Small, x + 8, y + 6, WithAlpha(t.accent, alpha), "*");
 
@@ -277,7 +302,19 @@ namespace sl::menu::ui {
 
         // Selected title name + position, centred beneath the strip.
         const MenuItem &sel = m_items[m_cursor];
+        const bool is_run = (sel.kind == ItemKind::Game && m_suspended != 0 && sel.app_id == m_suspended);
         const int name_y = center_y + bigSize / 2 + 70;   // over the fading reflection
+
+        if (is_run) {
+            std::string run_pill = std::string("▶ ") + T("Running") + "  (" + T("Press X to close") + ")";
+            const int rw = m_gfx->TextWidth(FontSize::Small, run_pill.c_str()) + 24;
+            const int rx = center_x - rw / 2;
+            const int ry = name_y - 32;
+            m_gfx->GlowRect(rx, ry, rw, 22, t.accent, 10);
+            m_gfx->FillRect(rx, ry, rw, 22, WithAlpha(t.accent, 220));
+            m_gfx->TextCentered(FontSize::Small, center_x, ry + 2, t.bg_bottom, run_pill.c_str());
+        }
+
         m_gfx->TextCentered(FontSize::Large, center_x, name_y,
                             t.accent, Ellipsize(sel.name, gfx::Gfx::Width - 160, FontSize::Large).c_str());
         char pos[28];
@@ -287,6 +324,10 @@ namespace sl::menu::ui {
         if (!m_show_counter) pos[0] = '\0';
         m_gfx->TextCentered(FontSize::Small, center_x, name_y + 48, t.dim, pos);
 
-        DrawStatusHint({ {{"a"}, "Select"}, {{"y"}, "Profile"}, {{"x"}, "Options"}, {{"+"}, "Power"} });
+        if (is_run) {
+            DrawStatusHint({ {{"a"}, "Resume"}, {{"y"}, "Profile"}, {{"x"}, "Close game"}, {{"+"}, "Power"} });
+        } else {
+            DrawStatusHint({ {{"a"}, "Select"}, {{"y"}, "Profile"}, {{"x"}, "Options"}, {{"+"}, "Power"} });
+        }
     }
 } // namespace sl::menu::ui

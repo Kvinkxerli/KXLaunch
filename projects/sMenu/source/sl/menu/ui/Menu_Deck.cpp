@@ -254,7 +254,10 @@ namespace sl::menu::ui {
                         t.title, nm.c_str());
 
             std::string sub;
-            if (sel.kind == ItemKind::Game) {
+            const bool is_deck_run = (sel.kind == ItemKind::Game && m_suspended != 0 && sel.app_id == m_suspended);
+            if (is_deck_run) {
+                sub = std::string("▶ ") + T("Running") + "  (" + T("Press X to close") + ")";
+            } else if (sel.kind == ItemKind::Game) {
                 if (const play::PlayInfo *pi = Play(sel.app_id)) {
                     if (pi->seconds > 0) {
                         sub = std::string(T("Played")) + ": " +
@@ -272,7 +275,7 @@ namespace sl::menu::ui {
             const int ty = kDeckRowY + kDeckRowH + 50;
             m_gfx->FillTriangle(kDeckRowX + 1, ty, kDeckRowX + 1, ty + 14,
                                 kDeckRowX + 12, ty + 7, t.accent);
-            m_gfx->Text(FontSize::Small, kDeckRowX + 22, ty - 1, t.dim, sub.c_str());
+            m_gfx->Text(FontSize::Small, kDeckRowX + 22, ty - 1, is_deck_run ? t.accent : t.dim, sub.c_str());
         }
 
         // ---- tabs ------------------------------------------------------------
@@ -354,7 +357,13 @@ namespace sl::menu::ui {
         if (!m_items.empty() && !ScrollBusy()) FetchArtFor(m_items[m_cursor]);
         if (!m_deck_backdrop) {
             DrawFetchStatus();
-            DrawStatusHint({ {{"a"}, "Open"}, {{"y"}, "Library"}, {{"minus"}, "Menu"}, {{"x"}, "Options"} });
+            const bool is_deck_run = (!m_items.empty() && m_cursor < (int)m_items.size() &&
+                                     m_items[m_cursor].kind == ItemKind::Game &&
+                                     m_suspended != 0 && m_items[m_cursor].app_id == m_suspended);
+            if (is_deck_run)
+                DrawStatusHint({ {{"a"}, "Resume"}, {{"y"}, "Library"}, {{"minus"}, "Menu"}, {{"x"}, "Close game"} });
+            else
+                DrawStatusHint({ {{"a"}, "Open"}, {{"y"}, "Library"}, {{"minus"}, "Menu"}, {{"x"}, "Options"} });
         }
     }
     // Draw `s` word-wrapped into `w`, at most `max_lines` lines, ellipsising the
@@ -598,6 +607,7 @@ namespace sl::menu::ui {
 
             const MenuItem &it = m_items[list[i]];
             const bool sel = (i == m_deck_lib_cursor);
+            const bool running = (it.kind == ItemKind::Game && m_suspended != 0 && it.app_id == m_suspended);
 
             m_gfx->FillRect(x, y, kDeckLibW, kDeckLibH, WithAlpha(t.bg_bottom, 230));
             if (SDL_Texture *cov = FlowCover(it))
@@ -606,7 +616,21 @@ namespace sl::menu::ui {
                 DrawAppTile(it, x, y + (kDeckLibH - kDeckLibW) / 2, kDeckLibW,
                             false, 255);
 
-            if (sel) {
+            if (running) {
+                m_gfx->GlowRect(x - 2, y - 2, kDeckLibW + 4, kDeckLibH + 4, t.accent, 12);
+                const int fw = 3;
+                m_gfx->FillRect(x - fw, y - fw, kDeckLibW + fw * 2, fw, t.accent);
+                m_gfx->FillRect(x - fw, y + kDeckLibH, kDeckLibW + fw * 2, fw, t.accent);
+                m_gfx->FillRect(x - fw, y, fw, kDeckLibH, t.accent);
+                m_gfx->FillRect(x + kDeckLibW, y, fw, kDeckLibH, t.accent);
+
+                const char *badge = T("Running");
+                const int tw = m_gfx->TextWidth(FontSize::Small, badge);
+                const int pw = tw + 20;
+                m_gfx->FillRect(x + kDeckLibW - pw - 4, y + 4, pw, 22, WithAlpha(t.accent, 230));
+                m_gfx->Text(FontSize::Small, x + kDeckLibW - pw, y + 6, t.bg_bottom, "▶");
+                m_gfx->Text(FontSize::Small, x + kDeckLibW - pw + 11, y + 6, t.bg_bottom, badge);
+            } else if (sel) {
                 const int fw = 3;
                 m_gfx->FillRect(x - fw, y - fw, kDeckLibW + fw * 2, fw, t.accent);
                 m_gfx->FillRect(x - fw, y + kDeckLibH, kDeckLibW + fw * 2, fw, t.accent);
@@ -619,7 +643,13 @@ namespace sl::menu::ui {
         m_gfx->FxClose();   // SDL is used directly below
         if (ren) SDL_RenderSetClipRect(ren, nullptr);
 
-        DrawHint({ {{"dpad"}, "Move"}, {{"a"}, "Launch"}, {{"l","r"}, "Tab"}, {{"b"}, "Back"} });
+        const bool is_deck_lib_run = (m_deck_lib_cursor >= 0 && m_deck_lib_cursor < n &&
+                                      m_items[list[m_deck_lib_cursor]].kind == ItemKind::Game &&
+                                      m_suspended != 0 && m_items[list[m_deck_lib_cursor]].app_id == m_suspended);
+        if (is_deck_lib_run)
+            DrawHint({ {{"dpad"}, "Move"}, {{"a"}, "Resume"}, {{"x"}, "Close game"}, {{"l","r"}, "Tab"}, {{"b"}, "Back"} });
+        else
+            DrawHint({ {{"dpad"}, "Move"}, {{"a"}, "Launch"}, {{"x"}, "Options"}, {{"l","r"}, "Tab"}, {{"b"}, "Back"} });
     }
     Menu::Action Menu::OnButtonDeckLibrary(Btn b, u64 &out_app_id) {
         std::vector<int> list;
@@ -662,6 +692,12 @@ namespace sl::menu::ui {
                 m_options_sub = Sub_None;
                 BuildOptions();
                 m_options_cursor = 0;
+                for (int i = 0; i < (int)m_options.size(); i++) {
+                    if (m_options[i].action == OptCloseGame) {
+                        m_options_cursor = i;
+                        break;
+                    }
+                }
                 if (!m_options.empty()) m_options_open = true;
                 break;
             }

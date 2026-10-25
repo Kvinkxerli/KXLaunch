@@ -587,3 +587,6 @@ Sep=сен
 Oct=окт
 Nov=ноя
 Dec=дек
+
+# --- running game hints ---
+Press X to close=X: закрыть игру

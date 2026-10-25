@@ -1400,6 +1400,12 @@ namespace sl::menu::ui {
             m_options_sub = Sub_None;
             BuildOptions();
             m_options_cursor = 0;
+            for (int i = 0; i < (int)m_options.size(); i++) {
+                if (m_options[i].action == OptCloseGame) {
+                    m_options_cursor = i;
+                    break;
+                }
+            }
             if (!m_options.empty()) m_options_open = true;
             return Action::None;
         }
@@ -1434,6 +1440,8 @@ namespace sl::menu::ui {
 
         const MenuItem &it = m_items[m_cursor];
         if (it.kind == ItemKind::Game) {
+            if (m_suspended != 0 && it.app_id == m_suspended)
+                m_options.push_back({ T("Close game"), OptCloseGame });
             m_options.push_back({ IsFavourite(it.app_id) ? T("Remove from Favourites")
                                                          : T("Add to Favourites"), OptFav });
             m_options.push_back({ T("Launch as user..."), OptLaunchAsUser });
@@ -1469,8 +1477,6 @@ namespace sl::menu::ui {
             if (m_deferred_joined && UnplacedWidgets() > 0)
                 m_options.push_back({ T("Add widget"), OptAddWidgetMenu });
         }
-        if (it.kind == ItemKind::Game && m_suspended != 0 && it.app_id == m_suspended)
-            m_options.push_back({ T("Close game"), OptCloseGame });
         m_options.push_back({ std::string(T("Sort: ")) + SortLabel(), OptSort });
         m_options.push_back({ T("Cancel"), OptDismiss });
     }
@@ -2013,8 +2019,24 @@ namespace sl::menu::ui {
 
         // Localized when it's a known UI title; user data (theme/widget names)
         // passes through T() unchanged.
-        if (center_title && center_title[0])
+        if (center_title && center_title[0]) {
             m_gfx->TextCentered(FontSize::Title, gfx::Gfx::Width / 2, 26, t.title, T(center_title));
+        } else if (m_suspended != 0) {
+            std::string run_name;
+            for (const auto &it : m_items) {
+                if (it.kind == ItemKind::Game && it.app_id == m_suspended) {
+                    run_name = it.name;
+                    break;
+                }
+            }
+            std::string run_label = std::string("▶ ") + T("Running") + (run_name.empty() ? "" : (": " + run_name));
+            run_label = Ellipsize(run_label, 420, FontSize::Small);
+            const int rw = m_gfx->TextWidth(FontSize::Small, run_label.c_str()) + 24;
+            const int rx = (gfx::Gfx::Width - rw) / 2;
+            m_gfx->GlowRect(rx, 14, rw, 24, t.accent, 10);
+            m_gfx->FillRect(rx, 14, rw, 24, WithAlpha(t.accent, 220));
+            m_gfx->TextCentered(FontSize::Small, gfx::Gfx::Width / 2, 17, t.bg_bottom, run_label.c_str());
+        }
 
         (void)kTopBarH;
     }

@@ -1590,8 +1590,18 @@ namespace sl::menu::ui {
             if (flow_settled && cur.kind == ItemKind::Game &&
                 ((!FlowCover(cur) && cover_missing) || shots_missing || wrap_missing))
                 StartCoverFetch(cur.app_id, cur.name);
+            const bool is_run = (cur.kind == ItemKind::Game && m_suspended != 0 && cur.app_id == m_suspended);
             const int ty = H - 132;
-            m_gfx->TextCentered(FontSize::Large, W / 2, ty, t.title,
+            if (is_run) {
+                std::string run_pill = std::string("▶ ") + T("Running") + "  (" + T("Press X to close") + ")";
+                const int rw = m_gfx->TextWidth(FontSize::Small, run_pill.c_str()) + 20;
+                const int rx = W / 2 - rw / 2;
+                const int ry = ty - 28;
+                m_gfx->GlowRect(rx, ry, rw, 22, t.accent, 8);
+                m_gfx->FillRect(rx, ry, rw, 22, WithAlpha(t.accent, 220));
+                m_gfx->TextCentered(FontSize::Small, W / 2, ry + 2, t.bg_bottom, run_pill.c_str());
+            }
+            m_gfx->TextCentered(FontSize::Large, W / 2, ty, is_run ? t.accent : t.title,
                                 Ellipsize(cur.name, W - 160, FontSize::Large).c_str());
             char pos[32];
             snprintf(pos, sizeof(pos), "%d / %d", sel + 1, n);
@@ -1603,6 +1613,12 @@ namespace sl::menu::ui {
         }
 
         DrawFetchStatus();
-        DrawStatusHint({ {{"a"}, "Launch"}, {{"x"}, "Options"}, {{"minus"}, "Menu"}, {{"rstick"}, "Look/Turn"} });
+        const bool is_cur_run = (!m_flow_items.empty() && sel < n &&
+                                 m_items[m_flow_items[sel]].kind == ItemKind::Game &&
+                                 m_suspended != 0 && m_items[m_flow_items[sel]].app_id == m_suspended);
+        if (is_cur_run)
+            DrawStatusHint({ {{"a"}, "Resume"}, {{"x"}, "Close game"}, {{"minus"}, "Menu"}, {{"rstick"}, "Look/Turn"} });
+        else
+            DrawStatusHint({ {{"a"}, "Launch"}, {{"x"}, "Options"}, {{"minus"}, "Menu"}, {{"rstick"}, "Look/Turn"} });
     }
 } // namespace sl::menu::ui
