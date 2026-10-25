@@ -606,3 +606,4 @@ Play in Switch Album=Воспроизвести в Альбоме Switch
 Video clip=Видеозапись
 Screenshot=Снимок экрана
 Press Y or A to upload music from phone=Нажмите Y или A для загрузки музыки с телефона
+Playback available in System Album=Воспроизведение в системном Альбоме

@@ -2065,7 +2065,7 @@ namespace sl::menu::ui {
                                 T("Put mp3/ogg files in sdmc:/slaunch/music"));
             m_gfx->TextCentered(FontSize::Normal, W / 2, 380, t.accent,
                                 T("Press Y or A to upload music from phone"));
-            DrawHint({ {{"a","y"}, "Upload music from phone"}, {{"b"}, "Back"} });
+            DrawHint({ {{"a","y"}, "Upload music from phone"} });
             return;
         }
         const int cur = m_music.TrackIndex();
@@ -2147,8 +2147,7 @@ namespace sl::menu::ui {
         DrawHint({ {{"a"}, m_music_cursor == cur && m_music.Enabled() ? "Pause" : "Play"},
                    {{"left","right"}, "Seek"}, {{"l","r"}, "Track"},
                    {{"y"}, "Upload from phone (QR)"},
-                   {{"x"}, "Repeat"}, {{"minus","plus"}, "Volume"},
-                   {{"b"}, "Back"} });
+                   {{"x"}, "Repeat"}, {{"minus","plus"}, "Volume"} });
     }
     // Touch: a track row plays it, the bar seeks, the cover plays / pauses.
     void Menu::OnTouchMusic(int x, int y) {
@@ -2215,7 +2214,6 @@ namespace sl::menu::ui {
                                 T("No Wi-Fi Connection"));
             m_gfx->TextCentered(FontSize::Small, W / 2, H / 2, t.dim,
                                 T("Connect your Nintendo Switch to Wi-Fi in System Settings"));
-            DrawHint({ {{"b"}, "Back"} });
             return;
         }
 
@@ -2309,7 +2307,7 @@ namespace sl::menu::ui {
 
         std::string last_file = net::MusicServer::Instance().LastUploadedFile();
         if (!last_file.empty()) {
-            std::string file_info = std::string("✔ ") + last_file;
+            std::string file_info = std::string("+ ") + last_file;
             m_gfx->Text(FontSize::Small, rx + 24, ty + 24, t.accent, file_info.c_str());
         }
 
@@ -2317,8 +2315,6 @@ namespace sl::menu::ui {
         char ftp_str[128];
         snprintf(ftp_str, sizeof(ftp_str), "FTP: ftp://%s:5000 -> /slaunch/music", ip_str);
         m_gfx->Text(FontSize::Small, rx + 24, ry + rh - 30, WithAlpha(t.dim, 140), ftp_str);
-
-        DrawHint({ {{"b"}, "Done / Back"} });
     }
     // ---- Homebrew (.nro) browser -------------------------------------------
     void Menu::LoadHbPins() {
@@ -2907,7 +2903,7 @@ namespace sl::menu::ui {
         if (is_vid) {
             // Sleek video player card
             const int cx = px + pw / 2;
-            const int cy = py + ph / 2 - 24;
+            const int cy = py + ph / 2 - 28;
 
             // Glowing circular play button
             gfx::Gfx::CardStyle bcs;
@@ -2919,21 +2915,28 @@ namespace sl::menu::ui {
             m_gfx->FillTriangle(cx - 9, cy - 16, cx + 16, cy, cx - 9, cy + 16, WithAlpha(t.accent, 255));
 
             // Title and date
-            m_gfx->TextCentered(FontSize::Normal, cx, cy + 50, t.title,
+            m_gfx->TextCentered(FontSize::Normal, cx, cy + 46, t.title,
                                 Ellipsize(m_album_entries[m_album_cursor].title, pw - 40, FontSize::Normal).c_str());
-            m_gfx->TextCentered(FontSize::Small, cx, cy + 78, t.dim,
+            m_gfx->TextCentered(FontSize::Small, cx, cy + 74, t.dim,
                                 m_album_entries[m_album_cursor].date_str.c_str());
 
-            // Action prompt pill
-            const int pillW = 340, pillH = 34;
+            // Information note explaining video playback is handled by system album
+            m_gfx->TextCentered(FontSize::Small, cx, cy + 102, WithAlpha(t.dim, 180),
+                                T("Playback available in System Album"));
+
+            // Action prompt pill (dynamically measured to fit text with clean padding)
+            const std::string btn_str = std::string("A: ") + T("System album");
+            const int btn_txt_w = m_gfx->TextWidth(FontSize::Small, btn_str.c_str());
+            const int pillW = btn_txt_w + 36, pillH = 32;
+            const int pillY = cy + 126;
             gfx::Gfx::CardStyle plcs;
             plcs.radius = pillH / 2.0f;
             plcs.shadow = 0.0f;
             plcs.fill = WithAlpha(t.accent, 45);
-            if (!m_gfx->Card(nullptr, (float)(cx - pillW / 2), (float)(cy + 110), (float)pillW, (float)pillH, plcs))
-                m_gfx->FillRect(cx - pillW / 2, cy + 110, pillW, pillH, WithAlpha(t.accent, 45));
-            m_gfx->TextCentered(FontSize::Small, cx, cy + 118, t.accent,
-                                T("A: Воспроизвести в Альбоме Switch"));
+            if (!m_gfx->Card(nullptr, (float)(cx - pillW / 2), (float)pillY, (float)pillW, (float)pillH, plcs))
+                m_gfx->FillRect(cx - pillW / 2, pillY, pillW, pillH, WithAlpha(t.accent, 45));
+            const int lh = m_gfx->LineHeight(FontSize::Small);
+            m_gfx->TextCentered(FontSize::Small, cx, pillY + (pillH - lh) / 2, t.accent, btn_str.c_str());
         } else {
             if (m_album_tex) {
                 m_gfx->DrawImage(m_album_tex, px, py, pw, ph, 255);
@@ -2983,9 +2986,9 @@ namespace sl::menu::ui {
                         WithAlpha(sel ? t.title : t.fg, a),
                         Ellipsize(entry.title, listW - 20, sel ? FontSize::Normal : FontSize::Small).c_str());
 
-            // Line 2: Date + Type badge
+            // Line 2: Date + Type badge (no emojis to prevent missing glyph boxes)
             std::string sub = entry.date_str;
-            sub += entry.is_video ? (std::string("  ·  🎬 ") + T("Video clip")) : (std::string("  ·  📷 ") + T("Screenshot"));
+            sub += std::string("  ·  ") + (entry.is_video ? T("Video clip") : T("Screenshot"));
             m_gfx->Text(FontSize::Small, listX + 4, y + 30, WithAlpha(t.dim, a), sub.c_str());
         }
 
@@ -2996,9 +2999,11 @@ namespace sl::menu::ui {
         m_gfx->Text(FontSize::Small, W - 8 - pwid,
                     H - 8 - m_gfx->LineHeight(FontSize::Small), t.dim, pos);
 
-        DrawStatusHint({ {{"a"}, is_vid ? "Play in Switch Album" : "View"},
-                         {{"x"}, "Slideshow"}, {{"b"}, "Back"},
-                         {{"y"}, "System album"} });
+        if (is_vid) {
+            DrawStatusHint({ {{"a"}, "System album"}, {{"x"}, "Slideshow"} });
+        } else {
+            DrawStatusHint({ {{"a"}, "View"}, {{"x"}, "Slideshow"}, {{"y"}, "System album"} });
+        }
     }
 
     void Menu::OnTouchAlbum(int x, int y) {
