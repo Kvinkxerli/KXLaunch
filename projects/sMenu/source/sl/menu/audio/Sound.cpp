@@ -15,15 +15,15 @@ namespace sl::menu::audio {
         // Startup keeps opening.wav as a last resort: it is what shipped under
         // the old name, and an install that has not been given a startup sound
         // yet should keep the one it already had rather than falling silent.
-        const char *kPaths[(int)Sfx::Count][3] = {
-            { "sdmc:/slaunch/sounds/welcome.wav",    "sdmc:/slaunch/sounds/welcome.mp3",    nullptr },
-            { "sdmc:/slaunch/sounds/page_left.wav",  "sdmc:/slaunch/sounds/page_left.mp3",  nullptr },
-            { "sdmc:/slaunch/sounds/page_right.wav", "sdmc:/slaunch/sounds/page_right.mp3", nullptr },
-            { "sdmc:/slaunch/sounds/startup.wav",    "sdmc:/slaunch/sounds/startup.mp3",
-              "sdmc:/slaunch/sounds/opening.wav" },
-            { "sdmc:/slaunch/sounds/confirm.wav",    "sdmc:/slaunch/sounds/confirm.mp3",    nullptr },
-            { "sdmc:/slaunch/sounds/click.wav",      "sdmc:/slaunch/sounds/click.mp3",      nullptr },
-            { "sdmc:/slaunch/sounds/back.wav",       "sdmc:/slaunch/sounds/back.mp3",       nullptr },
+        const char *kPaths[(int)Sfx::Count][4] = {
+            { "sdmc:/slaunch/sounds/welcome.wav",    "sdmc:/slaunch/sounds/welcome.mp3",    nullptr,                               nullptr },
+            { "sdmc:/slaunch/sounds/page_left.wav",  "sdmc:/slaunch/sounds/page_left.mp3",  nullptr,                               nullptr },
+            { "sdmc:/slaunch/sounds/page_right.wav", "sdmc:/slaunch/sounds/page_right.mp3", nullptr,                               nullptr },
+            { "sdmc:/slaunch/sounds/startup.wav",    "sdmc:/slaunch/sounds/startup.mp3",    "sdmc:/slaunch/sounds/opening.wav",    nullptr },
+            { "sdmc:/slaunch/sounds/confirm.wav",    "sdmc:/slaunch/sounds/confirm.mp3",    "sdmc:/slaunch/sounds/page_right.wav", nullptr },
+            { "sdmc:/slaunch/sounds/click.wav",      "sdmc:/slaunch/sounds/click.mp3",      "sdmc:/slaunch/sounds/move.wav",       nullptr },
+            { "sdmc:/slaunch/sounds/back.wav",       "sdmc:/slaunch/sounds/back.mp3",       "sdmc:/slaunch/sounds/page_left.wav",  nullptr },
+            { "sdmc:/slaunch/sounds/move.wav",       "sdmc:/slaunch/sounds/move.mp3",       nullptr,                               nullptr },
         };
     }
 
@@ -31,7 +31,7 @@ namespace sl::menu::audio {
         if (!audio_ok) return;
         Mix_AllocateChannels(8);          // a few voices so nav clicks can overlap
         for (int i = 0; i < (int)Sfx::Count; i++) {
-            for (int k = 0; k < 3 && kPaths[i][k]; k++) {
+            for (int k = 0; k < 4 && kPaths[i][k]; k++) {
                 if ((m_chunks[i] = Mix_LoadWAV(kPaths[i][k]))) break;
             }
             // Still null: that effect has no file and stays silent.
@@ -52,7 +52,10 @@ namespace sl::menu::audio {
         if (!m_ok) return;
         const int i = (int)s;
         if (i < 0 || i >= (int)Sfx::Count || !m_chunks[i]) return;
-        Mix_PlayChannel(-1, (Mix_Chunk *)m_chunks[i], 0);
+        if (s == Sfx::Move)
+            Mix_PlayChannel(0, (Mix_Chunk *)m_chunks[i], 0);
+        else
+            Mix_PlayChannel(-1, (Mix_Chunk *)m_chunks[i], 0);
     }
 
     void Sound::SetVolume(int vol) {

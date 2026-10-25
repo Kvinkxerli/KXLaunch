@@ -1,97 +1,75 @@
-<img width="64" height="64" alt="icon" src="https://github.com/user-attachments/assets/0a70ab24-5098-4e7b-b6ce-dba046e9230e"/>  for the Nintendo Switch
+# KXLaunch
 
-[Discord](https://discord.gg/dv28MgtaNn) 
+<img width="64" height="64" alt="icon" src="icon.png"/> **KXLaunch** — кастомное, быстрое и энергоэффективное Home Menu для **Nintendo Switch** (форк sLaunch).
 
-<img width="1280" height="720" alt="2026092401121200-A082AE4E5DA891D87084ACEACFDFF4A9" src="https://github.com/user-attachments/assets/fc5fcfc0-1348-454c-a057-2459c590818a" />
-<img width="1280" height="720" alt="2026101522331400-A082AE4E5DA891D87084ACEACFDFF4A9" src="https://github.com/user-attachments/assets/25b4fedb-23fb-4c87-9cf6-0260a3c94ac2" />
+[![Telegram](https://img.shields.io/badge/Telegram-@kvinkxerli-blue?logo=telegram)](https://t.me/kvinkxerli)
 
+<img width="1280" height="720" alt="KXLaunch Preview" src="https://github.com/user-attachments/assets/fc5fcfc0-1348-454c-a057-2459c590818a" />
+<img width="1280" height="720" alt="KXLaunch Preview 2" src="https://github.com/user-attachments/assets/25b4fedb-23fb-4c87-9cf6-0260a3c94ac2" />
 
-## Support
+---
 
-If you'd like to support development:
+## 🌟 Особенности форка KXLaunch
 
-- USDT (TRC20): `TCJ4HMJF3JHQG66khYTj98Em7v74j3cry9`
-- Bitcoin: `bc1qaeypp2m5h74alrmhyu4zvzf3yyf58k6mcw7868`
-- Monero: `45npN9u6zMFE7xMxfszfWBX2jdDdtZaogcGex4s5D7QDNsGPtbXjtjtXpbx9cnxLaKXC1KzGgckN2fMwrYrw5yqPTG2KiPj`
+* **Нативный выбор профиля Switch:** при нажатии на игру открывается стандартное системное окно выбора профиля Switch («Кто будет играть?»), если на консоли зарегистрировано несколько аккаунтов.
+* **Исправлена инициализация сохранений:** устранена проблема падения игр на движках Unreal Engine / Unity (например, *A Hat in Time* и др.), корректно генерируются атрибуты и метаданные сохранений (`owner_id`, `Thumbnail` только для профилей).
+* **Полноценные звуковые эффекты меню:** восстановлены звуки пролистывания игр (`Move`), переключения страниц (`PageLeft`/`PageRight`), выбора и кликов (`Confirm`/`Click`/`Back`) со встроенными fallback-звуками.
+* **Режим Line по умолчанию:** минималистичный и чистый интерфейс с плавным скроллингом и низким энергопотреблением.
+* **Полная русская локализация:** интерфейс и системные подсказки переведены на русский язык (с поддержкой английского и других языков).
 
-## Features
+---
 
-* **Theming & Customization:** Supports 5 built-in themes, custom user wallpapers, icon packs, custom fonts, and several UI modes. Includes layout tuning and customizable tile sizes/colors.
-* **Video Wallpapers:** Supports looped, silent `.mp4` video backgrounds utilizing the Switch's native NVDEC hardware decoder.
-* **Interactive Widgets:** Lua-based home screen widgets that can be dragged and repositioned via touch.
-* **Background Audio:** Native support for background music playback (MP3/OGG/FLAC) and custom UI sound effects.
-* **Per-Account Settings:** Fully independent profiles. Two users on the same console can have completely different themes, UI layouts, pinned homebrew, favorites, and hidden entries.
-* **USB File Transfer (MTP):** Connect to a PC via USB while the menu is open to directly copy files to/from the SD card. Disconnects automatically when launching a game or app.
-* **Content Filtering:** Opt-in adult and extreme-violence filter for downloaded game covers and news updates based on ratings (ESRB/PEGI/USK) and Steam tags.
-* **System Localization:** Fully translatable UI using custom `.txt` files. Automatically reads the console's shared font for native CJK (Chinese, Japanese, Korean) rendering, with an included Noto Sans CJK font for fallback.
-* **Diagnostic Logging:** Writes detailed boot, ECS, and daemon logs directly to the SD card to troubleshoot bring-up issues without a debugger.
+## 🎮 Основные возможности
 
-## Build Instructions
+* **Темы и персонализация:** встроенные темы, поддержка пользовательских обоев, наборов иконок (включая Minimal), кастомных шрифтов (TTF/OTF/TTC) и различных режимов отображения (Line, Grid, Flow, Deck, Shelf, Cover, List, XMB).
+* **Видео-обои:** поддержка бесшовных зацикленных видео-фонов `.mp4` с аппаратным декодированием NVDEC.
+* **Интерактивные виджеты:** виджеты на базе Lua (часы, календарь, погода, крипта и др.) с поддержкой сенсорного управления.
+* **Фоновая музыка и звуки:** воспроизведение музыки в меню (MP3/OGG/FLAC) с возможностью продолжения трека, а также кастомные звуки интерфейса.
+* **Раздельные профили:** индивидуальные настройки тем, раскладок и избранного для каждого аккаунта на консоли.
+* **Передача файлов по USB (MTP):** прямое подключение к ПК по USB в меню для копирования файлов на SD-карту без перезагрузки и извлечения карты.
 
-1. **Install devkitPro and Dependencies:**
-On Linux/WSL2, import the devkitPro keys and install the necessary Switch libraries:
+---
 
+## 📥 Установка
+
+1. Скачайте свежий архив **`kxlaunch.zip`** из релизов.
+2. Распакуйте содержимое архива в корень вашей SD-карты (`sdmc:/`), согласившись на замену файлов.
+3. Перезагрузите консоль с кастомной прошивкой (Atmosphère).
+
+---
+
+## 🛠️ Сборка из исходников
+
+### Требования
+* Установленный **devkitPro** (`devkitA64`, `libnx`, `AtmosphereLibs`).
+* Пакеты: `switch-dev`, `switch-sdl2`, `switch-sdl2_ttf`, `switch-sdl2_image`, `switch-sdl2_mixer`, `switch-curl`, `switch-mbedtls`.
+
+### Команды сборки
 ```bash
-sudo pacman-key --recv-keys BC26F752D25B92CE272E0F44F7FD5492264BB9D0 --keyserver keyserver.ubuntu.com
-sudo pacman-key --lsign-key BC26F752D25B92CE272E0F44F7FD5492264BB9D0
-sudo pacman -U https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz
+# Сборка всех компонентов и подготовка структуры SdOut/
+make
 
+# Упаковка готового релиза в kxlaunch.zip
+make package
+
+# Очистка сборки
+make clean
 ```
 
-Ensure `dkp-libs` and `dkp-linux` are added to your `/etc/pacman.conf`, then install:
+---
 
-```bash
-sudo pacman -Sy switch-dev switch-sdl2 switch-sdl2_ttf switch-sdl2_image switch-sdl2_mixer switch-curl switch-mbedtls
+## 💬 Контакты и обратная связь
 
-```
+* **Telegram разработчика форка:** [@kvinkxerli](https://t.me/kvinkxerli)
 
-*(Note: Using SDL2_image 2.8 and SDL2_mixer 2.8 instead of devkitPro's default 2.0.4 is recommended to prevent JPEG decoding crashes).*
+---
 
+## 🙏 Благодарности и Credits
 
-2. **Configure Environment Variables:**
-Export the required devkitPro paths so the Makefiles can locate the compiler:
-
-```bash
-export DEVKITPRO=/opt/devkitpro
-export DEVKITA64=$DEVKITPRO/devkitA64
-export PATH=$DEVKITA64/bin:$PATH
-
-```
-
-
-3. **Build libnx master and libstratosphere:**
-Atmosphere 1.12.0 (the release that supports firmware 23.0.x) needs a newer libnx than the packaged 4.12.0, so libnx master is built into a folder of its own for the daemon; the menu keeps the packaged libnx. Built against older libraries, the daemon does not start on 23.0.x.
-
-```bash
-git clone --depth 50 https://github.com/switchbrew/libnx ~/libnx-master
-make -C ~/libnx-master/nx -j$(nproc)
-make -C ~/libnx-master/nx install DESTDIR=$HOME/libnx-master-install
-export SL_LIBNX=$HOME/libnx-master-install/opt/devkitpro/libnx
-
-git clone --depth=1 --branch 1.12.0 https://github.com/Atmosphere-NX/Atmosphere /opt/atmosphere
-make -C /opt/atmosphere/libraries/libstratosphere -j$(nproc) LIBNX=$SL_LIBNX
-
-mkdir -p $DEVKITPRO/AtmosphereLibs/include $DEVKITPRO/AtmosphereLibs/lib
-cp -r /opt/atmosphere/libraries/libstratosphere/include/. $DEVKITPRO/AtmosphereLibs/include/
-cp -r /opt/atmosphere/libraries/libvapours/include/.      $DEVKITPRO/AtmosphereLibs/include/
-find /opt/atmosphere/libraries/libstratosphere -name '*.a' -exec cp {} $DEVKITPRO/AtmosphereLibs/lib/ \;
-```
-
-The daemon's Makefile looks for that libnx in `~/Desktop/Projects/switch/libnx-master-install` by default; point it elsewhere with `make LIBNX=$SL_LIBNX`.
-
-
-4. **Build sLaunch:**
-Run `make` in the sLaunch root directory. This compiles the daemon, applet, and bundles all assets into the `SdOut/` folder.
-
-* Use `make package` to create a deployable zip file.
-* Individual targets available: `make ssystem`, `make smenu`, `make sinstaller`, `make hbloader`, `make assets`.
-
-
-## Credits
-
-* **uLaunch (Xortroll & contributors):** Architecture, applet/daemon model, ECS content-serving, and NPDMs (GPLv2).
-* **nx-hbloader (switchbrew):** Foundation for the bundled homebrew loader fork (ISC).
-* **Atmosphere (haze):** USB file transfer protocol (GPLv2).
-* **MeepCat55:** Creator of the bundled `Minimal` icon pack.
-* **Xelu:** Free Controller and Key Prompts used for UI buttons (CC0).
-* **averne / FFmpeg (nvtegra branch) & SwitchWave:** NVDEC hardware-acceleration backend used for video wallpaper decoding (GPLv2+).
+* **sLaunch (etonedemid):** оригинальный проект меню для Switch.
+* **uLaunch (Xortroll & contributors):** архитектура системного демона/апплета, ECS и NPDM (GPLv2).
+* **nx-hbloader (switchbrew):** загрузчик Homebrew (ISC).
+* **Atmosphere (haze):** протокол передачи файлов по USB MTP (GPLv2).
+* **MeepCat55:** создатель набора иконок `Minimal`.
+* **Xelu:** иконки кнопок геймпада (CC0).
+* **averne / FFmpeg (nvtegra) & SwitchWave:** аппаратное ускорение видео NVDEC (GPLv2+).

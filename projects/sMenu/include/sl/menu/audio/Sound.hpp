@@ -21,6 +21,7 @@ namespace sl::menu::audio {
         Confirm,    // weighty yes: launching something, saving a theme
         Click,      // ordinary yes: opening a submenu, toggling a setting
         Back,       // leaving a screen
+        Move,       // cursor moved (scrolling games / menu)
         Count
     };
 

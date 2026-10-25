@@ -51,8 +51,9 @@ namespace sl::sys::app {
     static Result EnsureSave(u64 app_id, u64 owner, AccountUid uid, FsSaveDataType type,
                            FsSaveDataSpaceId space, u64 size, u64 journal) {
         if (size == 0) return 0;
+        const u64 real_owner = owner ? owner : app_id;
         const FsSaveDataAttribute attr = {
-            .application_id = app_id, .uid = uid, .system_save_data_id = 0,
+            .application_id = real_owner, .uid = uid, .system_save_data_id = 0,
             .save_data_type = (u8)type, .save_data_rank = FsSaveDataRank_Primary,
             .save_data_index = 0,
         };
@@ -61,13 +62,13 @@ namespace sl::sys::app {
         if (R_SUCCEEDED(orc)) { fsFsClose(&fs); return 0; }
         const FsSaveDataCreationInfo info = {
             .save_data_size = (s64)size, .journal_size = (s64)journal,
-            .available_size = 0x4000, .owner_id = owner, .flags = 0,
+            .available_size = 0x4000, .owner_id = real_owner, .flags = 0,
             .save_data_space_id = (u8)space,
         };
         const FsSaveDataMetaInfo meta = {
-            .size = (type == FsSaveDataType_Bcat) ? 0u : 0x40060u,
-            .type = (u8)((type == FsSaveDataType_Bcat) ? FsSaveDataMetaType_None
-                                                       : FsSaveDataMetaType_Thumbnail),
+            .size = (type == FsSaveDataType_Account) ? 0x40060u : 0u,
+            .type = (u8)((type == FsSaveDataType_Account) ? FsSaveDataMetaType_Thumbnail
+                                                          : FsSaveDataMetaType_None),
         };
         const Result crc = fsCreateSaveDataFileSystem(&attr, &info, &meta);
         DaemonLog("save: app=0x%016lx type=%d size=0x%lx open rc=0x%x -> create rc=0x%x",
@@ -100,7 +101,7 @@ namespace sl::sys::app {
                   n.startup_user_account, n.user_account_save_data_size, n.device_save_data_size,
                   n.temporary_storage_size, n.cache_storage_size,
                   n.bcat_delivery_cache_storage_size);
-        const u64 owner = n.save_data_owner_id;
+        const u64 owner = n.save_data_owner_id ? n.save_data_owner_id : app_id;
         // Every save is still tried after one fails; the first failure decides.
         Result first = 0;
         auto keep = [&](Result r) { if (R_FAILED(r) && !first) first = r; };
@@ -141,7 +142,7 @@ namespace sl::sys::app {
         Result rc = appletCreateApplication(&g_AppHolder, app_id);
         if (rc != 0) return rc;
 
-        rc = wants_user ? PushUserParam(user) : 0;
+        rc = (wants_user && accountUidIsValid(&user)) ? PushUserParam(user) : 0;
         if (rc == 0) {
             // Release foreground so the app can acquire it
             appletUnlockForeground();

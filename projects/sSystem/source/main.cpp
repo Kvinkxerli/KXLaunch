@@ -404,17 +404,18 @@ static bool PickUser(AccountUid &out) {
     return true;
 }
 
-// Theming > "Ask who's playing": like the stock HOME Menu, launching a game
-// shows the player select screen first instead of using the menu's user.
-// A file rather than SMI so the menu can change it without a protocol bump.
+// Default Switch behavior: launching a game shows the player select screen
+// when the console has multiple user profiles, unless an auto_user is set.
 static constexpr const char *kAskUserPath = "sdmc:/slaunch/config/ask_user";
 static bool ShouldAskUser(u64 app_id) {
-    struct stat st;
-    if (stat(kAskUserPath, &st) != 0) return false;
+    if (!app::WantsUser(app_id)) return false;   // games that pick their own players are left alone
     s32 n = 0;
     AccountUid uids[ACC_USER_LIST_SIZE];
-    if (R_FAILED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &n)) || n < 2) return false;
-    return app::WantsUser(app_id);   // games that pick their own players are left alone
+    if (R_FAILED(accountListAllUsers(uids, ACC_USER_LIST_SIZE, &n)) || n <= 0) return false;
+    // Default Switch behavior: if 2+ users exist on the console, always ask who is playing.
+    if (n > 1) return true;
+    struct stat st;
+    return (stat(kAskUserPath, &st) == 0);
 }
 
 static void RunPendingAction() {
@@ -426,8 +427,17 @@ static void RunPendingAction() {
         case Pending::LaunchApp: {
             EnsureUser();
             AccountUid player = g_SelectedUser;
-            // Native profile selection is handled cleanly in sMenu without prompting
-            // for unlinked Nintendo Accounts. Launch directly with the selected user.
+            AccountUid auto_user;
+            if (ReadAutoUser(auto_user)) {
+                player = auto_user;
+            } else if (ShouldAskUser(g_PendingAppId)) {
+                if (!PickUser(player)) {
+                    DaemonLog("app: launch 0x%016lx cancelled at player select", g_PendingAppId);
+                    LaunchMenu();
+                    break;
+                }
+                g_SelectedUser = player;
+            }
             if (app::g_AppRunning) app::Terminate();
             CleanupHbOverride();   // dropping an override before a normal launch
             if (const Result rc = app::Launch(g_PendingAppId, player); R_FAILED(rc)) {

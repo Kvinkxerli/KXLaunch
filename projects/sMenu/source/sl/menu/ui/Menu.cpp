@@ -974,6 +974,26 @@ namespace sl::menu::ui {
         // the confirmation cue rather than the ordinary click.
         m_sfx_confirm = false;
 
+        // Every screen keeps its own cursor, so "the cursor moved" is any of
+        // them changing on a direction press while the screen stays the same.
+        auto where = [&]() {
+            const int c[] = { m_cursor, m_theming_cursor, m_options_cursor, m_dialog_cursor,
+                m_net_cursor, m_power_cursor, m_payload_cursor, m_sys_cursor, m_album_cursor,
+                m_flow_menu_cursor, m_pick_cursor, m_deck_menu_cursor, m_deck_lib_cursor,
+                m_flowset_cursor, m_hb_cursor, m_theme_cursor, m_edit_cursor, m_fm_cursor,
+                m_fm_menu_cursor, m_music_cursor, m_widget_cursor, m_widgetopt_cursor,
+                m_font_cursor, m_xmb_col, m_xmb_item, m_kb_row, m_kb_col, m_deck_row,
+                m_deck_tab, m_deck_card, m_about_scroll, (int)m_screen, (int)m_options_open,
+                (int)m_dialog };
+            uint64_t h = 1469598103934665603ULL;
+            for (int v : c) h = (h ^ (uint32_t)v) * 1099511628211ULL;
+            return h;
+        };
+        const uint64_t before = where();
+        const Screen screen_before = m_screen;
+        const bool options_before = m_options_open;
+        const Dialog dialog_before = m_dialog;
+
         Action a = Action::None;
         if (m_options_open)               a = OnButtonOptions(b, out_app_id);
         else if (m_dialog != Dialog::None) a = OnButtonDialog(b, out_app_id);
@@ -1008,6 +1028,10 @@ namespace sl::menu::ui {
         }
 
         PlayButtonSfx(b, a);
+        const bool dir = b == Btn::Up || b == Btn::Down || b == Btn::Left || b == Btn::Right;
+        if (dir && a == Action::None && m_screen == screen_before &&
+            m_options_open == options_before && m_dialog == dialog_before && where() != before)
+            m_sfx.Play(audio::Sfx::Move);
         return a;
     }
 
@@ -1096,7 +1120,7 @@ namespace sl::menu::ui {
                 return Action::None;
             case ItemKind::Album:        OpenAlbumViewer(); return Action::None;
             case ItemKind::MusicPlayer:  OpenMusicPlayer(false); return Action::None;
-            case ItemKind::UserPage:     OpenUserSelect(); return Action::None;
+            case ItemKind::UserPage:     return Action::OpenUserPage;
             case ItemKind::WebBrowser:   return Action::OpenWebBrowser;
             case ItemKind::MiiEdit:      return Action::OpenMiiEdit;
             case ItemKind::Controllers:  return Action::OpenControllers;
@@ -1348,7 +1372,7 @@ namespace sl::menu::ui {
         // press could silently be swallowed by that instead of ever reaching
         // here, or worse, mutate that unrelated state as a side effect.
         if (b == Btn::A) return ActivateSelected(out_app_id);
-        if (b == Btn::Y) { OpenUserSelect(); return Action::None; }
+        if (b == Btn::Y) { OpenSearch(); return Action::None; }
 
         if (b == Btn::X) {
             m_options_sub = Sub_None;
@@ -1476,8 +1500,8 @@ namespace sl::menu::ui {
             }
             case OptLaunchAsUser:
                 m_options_open = false;
-                OpenUserSelect(true, sel_id);
-                return Action::None;
+                out_app_id = sel_id;
+                return Action::LaunchApp;
             case OptRename:
                 m_options_open = false;
                 RenameSelected();   // shows the software keyboard, then rebuilds

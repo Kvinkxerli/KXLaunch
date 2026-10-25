@@ -392,11 +392,10 @@ namespace sl::menu::ui {
             if (std::abs(m_fling_vel) < kFlowFlingMin) m_fling_vel = 0.0f;
 
             if (!was_widget_drag && !was_scroll) {
-                // Top bar right area: tapping user nickname / avatar opens user profile switcher
+                // Top bar right area: tapping user nickname / avatar opens user profile page
                 if (y < 60 && x > gfx::Gfx::Width - 320) {
-                    OpenUserSelect();
                     m_touching = false; m_touch_widget = -1;
-                    return Action::None;
+                    return Action::OpenUserPage;
                 }
                 // XMB: a tap on the bar opens that category outright.
                 if (m_ui_mode == UiMode::XMB) {
