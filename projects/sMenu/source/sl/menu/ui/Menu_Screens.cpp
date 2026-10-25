@@ -2320,42 +2320,75 @@ namespace sl::menu::ui {
         m_album_scanned = true;
         m_album.clear();
 
-        auto entries = [](const std::string &dir, std::vector<std::string> &out, bool files) {
-            DIR *d = opendir(dir.c_str());
-            if (!d) return;
-            while (struct dirent *e = readdir(d)) {
-                if (e->d_name[0] == '.') continue;
-                const bool is_dir = (e->d_type == DT_DIR);
-                if (is_dir != !files) continue;
-                out.push_back(dir + "/" + e->d_name);
-            }
-            closedir(d);
-            std::sort(out.begin(), out.end());
+        auto is_directory = [](const std::string &path, struct dirent *e) -> bool {
+            if (e->d_type == DT_DIR) return true;
+            if (e->d_type == DT_REG) return false;
+            struct stat st {};
+            return (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode));
         };
 
-        std::vector<std::string> years, months, days;
-        entries("sdmc:/Nintendo/Album", years, false);
-        for (const auto &y : years) {
-            months.clear();
-            entries(y, months, false);
-            for (const auto &m : months) {
-                days.clear();
-                entries(m, days, false);
-                for (const auto &d : days) {
-                    std::vector<std::string> shots;
-                    entries(d, shots, true);
-                    for (auto &s : shots) {
-                        const char *ext = s.c_str() + s.size() - 4;
-                        if (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".mp4") == 0)
-                            m_album.push_back(std::move(s));
+        auto scan_dir = [&](auto &self, const std::string &dir, int depth) -> void {
+            if (depth > 6) return;
+            DIR *d = opendir(dir.c_str());
+            if (!d) return;
+            std::vector<std::string> subdirs;
+            std::vector<std::string> files;
+            while (struct dirent *e = readdir(d)) {
+                if (e->d_name[0] == '.') continue;
+                std::string full = dir + "/" + e->d_name;
+                if (is_directory(full, e)) {
+                    subdirs.push_back(full);
+                } else {
+                    if (full.size() >= 4) {
+                        const char *ext4 = full.c_str() + full.size() - 4;
+                        const char *ext5 = (full.size() >= 5) ? full.c_str() + full.size() - 5 : "";
+                        if (strcasecmp(ext4, ".jpg") == 0 || strcasecmp(ext4, ".mp4") == 0 ||
+                            strcasecmp(ext4, ".png") == 0 || strcasecmp(ext5, ".jpeg") == 0) {
+                            files.push_back(full);
+                        }
                     }
                 }
             }
+            closedir(d);
+
+            for (auto &f : files) m_album.push_back(std::move(f));
+            for (const auto &sub : subdirs) self(self, sub, depth + 1);
+        };
+
+        std::vector<std::string> roots;
+        roots.push_back("sdmc:/Nintendo/Album");
+        if (DIR *ed = opendir("sdmc:/emuMMC")) {
+            while (struct dirent *ee = readdir(ed)) {
+                if (ee->d_name[0] == '.') continue;
+                std::string cand = std::string("sdmc:/emuMMC/") + ee->d_name + "/Nintendo/Album";
+                struct stat st {};
+                if (stat(cand.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
+                    roots.push_back(cand);
+                }
+            }
+            closedir(ed);
         }
-        // Newest first: the path shape sorts chronologically, so one reverse
-        // puts the most recent capture under the cursor on open, which is what
-        // you almost always want.
-        std::reverse(m_album.begin(), m_album.end());
+
+        for (const auto &r : roots) {
+            scan_dir(scan_dir, r, 0);
+        }
+
+        if (m_album.empty()) return;
+
+        // Deduplicate paths if both sdmc:/Nintendo/Album and emuMMC point to same captures
+        std::sort(m_album.begin(), m_album.end());
+        m_album.erase(std::unique(m_album.begin(), m_album.end()), m_album.end());
+
+        // Sort newest first by filename timestamp (YYYYMMDDHHMMSS...)
+        std::sort(m_album.begin(), m_album.end(), [](const std::string &a, const std::string &b) {
+            size_t pa = a.find_last_of('/');
+            size_t pb = b.find_last_of('/');
+            const char *na = (pa != std::string::npos) ? a.c_str() + pa + 1 : a.c_str();
+            const char *nb = (pb != std::string::npos) ? b.c_str() + pb + 1 : b.c_str();
+            int cmp = strcasecmp(na, nb);
+            if (cmp != 0) return cmp > 0;
+            return a > b;
+        });
     }
     void Menu::FreeAlbumTexture() {
         if (m_album_tex) m_gfx->FreeImage(m_album_tex);

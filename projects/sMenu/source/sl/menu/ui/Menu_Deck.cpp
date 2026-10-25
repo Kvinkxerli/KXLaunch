@@ -218,10 +218,15 @@ namespace sl::menu::ui {
 
             // Suspended game: the same "still running" tag the other layouts use.
             if (it.kind == ItemKind::Game && m_suspended != 0 && it.app_id == m_suspended) {
-                const int tw = m_gfx->TextWidth(FontSize::Small, T("Running")) + 16;
-                m_gfx->FillRect(x + 8, kDeckRowY + 8, tw, 24, WithAlpha(t.accent, 220));
-                m_gfx->Text(FontSize::Small, x + 16, kDeckRowY + 10, t.bg_bottom,
-                            T("Running"));
+                const int tw = m_gfx->TextWidth(FontSize::Small, T("Running")) + 20;
+                gfx::Gfx::CardStyle bcs;
+                bcs.radius   = 12.0f; // rounded capsule
+                bcs.shadow   = 4.0f;
+                bcs.fill     = WithAlpha(t.accent, 220);
+                if (!m_gfx->Card(nullptr, (float)(x + 8), (float)(kDeckRowY + 8), (float)tw, 24.0f, bcs, 255)) {
+                    m_gfx->FillRect(x + 8, kDeckRowY + 8, tw, 24, WithAlpha(t.accent, 220));
+                }
+                m_gfx->Text(FontSize::Small, x + 18, kDeckRowY + 10, t.bg_bottom, T("Running"));
             }
 
             if (sel) {
@@ -256,7 +261,7 @@ namespace sl::menu::ui {
             std::string sub;
             const bool is_deck_run = (sel.kind == ItemKind::Game && m_suspended != 0 && sel.app_id == m_suspended);
             if (is_deck_run) {
-                sub = std::string("▶ ") + T("Running") + "  (" + T("Press X to close") + ")";
+                sub = std::string("▶ ") + T("Running");
             } else if (sel.kind == ItemKind::Game) {
                 if (const play::PlayInfo *pi = Play(sel.app_id)) {
                     if (pi->seconds > 0) {
@@ -617,20 +622,24 @@ namespace sl::menu::ui {
                             false, 255);
 
             if (running) {
-                m_gfx->GlowRect(x - 2, y - 2, kDeckLibW + 4, kDeckLibH + 4, t.accent, 12);
-                const int fw = 3;
-                m_gfx->FillRect(x - fw, y - fw, kDeckLibW + fw * 2, fw, t.accent);
-                m_gfx->FillRect(x - fw, y + kDeckLibH, kDeckLibW + fw * 2, fw, t.accent);
-                m_gfx->FillRect(x - fw, y, fw, kDeckLibH, t.accent);
-                m_gfx->FillRect(x + kDeckLibW, y, fw, kDeckLibH, t.accent);
+                const int bh = 22;
+                const int bw = 22;
+                const int bx = x + kDeckLibW - bw - 6;
+                const int by = y + 6;
+                gfx::Gfx::CardStyle bcs;
+                bcs.radius   = bh * 0.5f;
+                bcs.shadow   = 3.0f;
+                bcs.glow     = 0.4f;
+                bcs.glow_col = t.accent;
+                bcs.fill     = WithAlpha(t.accent, 230);
+                if (!m_gfx->Card(nullptr, (float)bx, (float)by, (float)bw, (float)bh, bcs, 255)) {
+                    m_gfx->FillRect(bx, by, bw, bh, WithAlpha(t.accent, 230));
+                }
+                m_gfx->TextCentered(FontSize::Small, bx + bw / 2 + 1, by + (bh - m_gfx->LineHeight(FontSize::Small)) / 2 + 1,
+                                    t.bg_bottom, "▶");
+            }
 
-                const char *badge = T("Running");
-                const int tw = m_gfx->TextWidth(FontSize::Small, badge);
-                const int pw = tw + 20;
-                m_gfx->FillRect(x + kDeckLibW - pw - 4, y + 4, pw, 22, WithAlpha(t.accent, 230));
-                m_gfx->Text(FontSize::Small, x + kDeckLibW - pw, y + 6, t.bg_bottom, "▶");
-                m_gfx->Text(FontSize::Small, x + kDeckLibW - pw + 11, y + 6, t.bg_bottom, badge);
-            } else if (sel) {
+            if (sel) {
                 const int fw = 3;
                 m_gfx->FillRect(x - fw, y - fw, kDeckLibW + fw * 2, fw, t.accent);
                 m_gfx->FillRect(x - fw, y + kDeckLibH, kDeckLibW + fw * 2, fw, t.accent);

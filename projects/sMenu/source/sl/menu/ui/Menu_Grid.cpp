@@ -631,28 +631,27 @@ namespace sl::menu::ui {
 
         const bool running = (it.kind == ItemKind::Game && m_suspended != 0 && it.app_id == m_suspended);
         if (running) {
-            const SDL_Color c = WithAlpha(t.accent, a);
-            m_gfx->GlowRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4, t.accent, 12);
-            m_gfx->FillRect(r.x - 3, r.y - 3, r.w + 6, 3, c);
-            m_gfx->FillRect(r.x - 3, r.y + r.h, r.w + 6, 3, c);
-            m_gfx->FillRect(r.x - 3, r.y - 3, 3, r.h + 6, c);
-            m_gfx->FillRect(r.x + r.w, r.y - 3, 3, r.h + 6, c);
-
-            const char *badge = T("Running");
-            const int tw = m_gfx->TextWidth(FontSize::Small, badge);
-            const int pw = tw + 20;
-            const int ph = 22;
-            const int px = r.x + r.w - pw - 4;
-            const int py = r.y + 4;
-            m_gfx->FillRect(px, py, pw, ph, WithAlpha(t.accent, a));
-            m_gfx->Text(FontSize::Small, px + 4, py + 2, t.bg_bottom, "▶");
-            m_gfx->Text(FontSize::Small, px + 15, py + 2, t.bg_bottom, badge);
+            const int bh = 22;
+            const int bw = 22;
+            const int px = r.x + r.w - bw - 6;
+            const int py = r.y + 6;
+            gfx::Gfx::CardStyle bcs;
+            bcs.radius   = bh * 0.5f;
+            bcs.shadow   = 3.0f;
+            bcs.glow     = 0.4f;
+            bcs.glow_col = t.accent;
+            bcs.fill     = WithAlpha(t.accent, a);
+            if (!m_gfx->Card(nullptr, (float)px, (float)py, (float)bw, (float)bh, bcs, a)) {
+                m_gfx->FillRect(px, py, bw, bh, WithAlpha(t.accent, a));
+            }
+            m_gfx->TextCentered(FontSize::Small, px + bw / 2 + 1, py + (bh - m_gfx->LineHeight(FontSize::Small)) / 2 + 1,
+                                t.bg_bottom, "▶");
         }
 
         // Focus is a white frame round the tile, as Windows draws it when you
         // move with a controller; the tile itself is never dimmed.
-        if (sel && !running) {
-            const SDL_Color c = WithAlpha(t.title, a);
+        if (sel) {
+            const SDL_Color c = WithAlpha(running ? t.accent : t.title, a);
             m_gfx->FillRect(r.x - 3, r.y - 3, r.w + 6, 3, c);
             m_gfx->FillRect(r.x - 3, r.y + r.h, r.w + 6, 3, c);
             m_gfx->FillRect(r.x - 3, r.y - 3, 3, r.h + 6, c);
@@ -742,16 +741,7 @@ namespace sl::menu::ui {
         // The selected entry's name, in the corner Metro puts its page title.
         const MenuItem &sel = m_items[m_cursor];
         const bool is_run = (sel.kind == ItemKind::Game && m_suspended != 0 && sel.app_id == m_suspended);
-        if (is_run) {
-            std::string run_pill = std::string("▶ ") + T("Running") + "  (" + T("Press X to close") + ")";
-            const int rw = m_gfx->TextWidth(FontSize::Small, run_pill.c_str()) + 20;
-            const int rx = TileLeft();
-            const int ry = TileTop() - 86;
-            m_gfx->GlowRect(rx, ry, rw, 22, t.accent, 8);
-            m_gfx->FillRect(rx, ry, rw, 22, WithAlpha(t.accent, 220));
-            m_gfx->TextCentered(FontSize::Small, rx + rw / 2, ry + 2, t.bg_bottom, run_pill.c_str());
-        }
-        m_gfx->Text(FontSize::Large, TileLeft(), TileTop() - 58, is_run ? t.accent : t.title,
+        m_gfx->Text(FontSize::Large, TileLeft(), TileTop() - 58, t.title,
                     Ellipsize(sel.name, 900, FontSize::Large).c_str());
 
         if (sel.kind == ItemKind::MusicPlayer)

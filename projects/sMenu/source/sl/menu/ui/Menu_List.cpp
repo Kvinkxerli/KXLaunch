@@ -153,10 +153,13 @@ namespace sl::menu::ui {
                           : SystemIcon(it.kind);
         const bool art = icon && (isGame || isHb);
 
+        const bool running = (it.kind == ItemKind::Game &&
+                              it.app_id == m_suspended && m_suspended != 0);
+
         gfx::Gfx::CardStyle cs;
         cs.radius   = std::max(6.0f, size / 9.0f);
         cs.shadow   = std::max(6.0f, size * 0.07f);
-        cs.glow     = selected ? SelectionGlow() : 0.0f;
+        cs.glow     = selected ? SelectionGlow() : (running ? 0.70f : 0.0f);
         cs.glow_col = t.accent;
         cs.reflect  = reflect;
         if (art) {
@@ -190,26 +193,22 @@ namespace sl::menu::ui {
                         WithAlpha(t.dim, alpha), initial);
         }
 
-        const bool running = (it.kind == ItemKind::Game &&
-                              it.app_id == m_suspended && m_suspended != 0);
         if (running) {
-            m_gfx->GlowRect(x - 2, y - 2, size + 4, size + 4, t.accent, 14);
-            const int bw = 3;
-            m_gfx->FillRect(x - bw, y - bw, size + bw * 2, bw, WithAlpha(t.accent, alpha));
-            m_gfx->FillRect(x - bw, y + size, size + bw * 2, bw, WithAlpha(t.accent, alpha));
-            m_gfx->FillRect(x - bw, y - bw, bw, size + bw * 2, WithAlpha(t.accent, alpha));
-            m_gfx->FillRect(x + size, y - bw, bw, size + bw * 2, WithAlpha(t.accent, alpha));
-
-            const char *badge_text = T("Running");
-            const int tw = m_gfx->TextWidth(FontSize::Small, badge_text);
-            const int pw = tw + 22;
-            const int ph = 24;
-            const int px = x + size - pw - 6;
-            const int py = y + 6;
-            m_gfx->GlowRect(px, py, pw, ph, t.accent, 8);
-            m_gfx->FillRect(px, py, pw, ph, WithAlpha(t.accent, alpha));
-            m_gfx->Text(FontSize::Small, px + 5, py + 3, t.bg_bottom, "▶");
-            m_gfx->Text(FontSize::Small, px + 17, py + 3, t.bg_bottom, badge_text);
+            const int bh = std::max(22, size / 9);
+            const int bw = bh;
+            const int bx = x + size - bw - 8;
+            const int by = y + 8;
+            gfx::Gfx::CardStyle bcs;
+            bcs.radius   = bw * 0.5f; // perfectly round circle badge
+            bcs.shadow   = 4.0f;
+            bcs.glow     = 0.45f;
+            bcs.glow_col = t.accent;
+            bcs.fill     = WithAlpha(t.accent, alpha);
+            if (!m_gfx->Card(nullptr, (float)bx, (float)by, (float)bw, (float)bh, bcs, alpha)) {
+                m_gfx->FillRect(bx, by, bw, bh, WithAlpha(t.accent, alpha));
+            }
+            m_gfx->TextCentered(FontSize::Small, bx + bw / 2 + 1, by + (bh - m_gfx->LineHeight(FontSize::Small)) / 2 + 1,
+                                t.bg_bottom, "▶");
         }
         if (it.is_favourite)
             m_gfx->Text(FontSize::Small, x + 8, y + 6, WithAlpha(t.accent, alpha), "*");
@@ -305,15 +304,6 @@ namespace sl::menu::ui {
         const bool is_run = (sel.kind == ItemKind::Game && m_suspended != 0 && sel.app_id == m_suspended);
         const int name_y = center_y + bigSize / 2 + 70;   // over the fading reflection
 
-        if (is_run) {
-            std::string run_pill = std::string("▶ ") + T("Running") + "  (" + T("Press X to close") + ")";
-            const int rw = m_gfx->TextWidth(FontSize::Small, run_pill.c_str()) + 24;
-            const int rx = center_x - rw / 2;
-            const int ry = name_y - 32;
-            m_gfx->GlowRect(rx, ry, rw, 22, t.accent, 10);
-            m_gfx->FillRect(rx, ry, rw, 22, WithAlpha(t.accent, 220));
-            m_gfx->TextCentered(FontSize::Small, center_x, ry + 2, t.bg_bottom, run_pill.c_str());
-        }
 
         m_gfx->TextCentered(FontSize::Large, center_x, name_y,
                             t.accent, Ellipsize(sel.name, gfx::Gfx::Width - 160, FontSize::Large).c_str());

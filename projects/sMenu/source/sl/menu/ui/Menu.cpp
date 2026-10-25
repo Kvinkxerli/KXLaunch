@@ -993,6 +993,11 @@ namespace sl::menu::ui {
         const bool options_before = m_options_open;
         const Dialog dialog_before = m_dialog;
 
+        // Any gamepad input cancels touch inertia fling immediately so controller has full control
+        if (m_fling_vel != 0.0f) {
+            m_fling_vel = 0.0f;
+        }
+
         Action a = Action::None;
         if (m_options_open)               a = OnButtonOptions(b, out_app_id);
         else if (m_dialog != Dialog::None) a = OnButtonDialog(b, out_app_id);
@@ -2029,13 +2034,23 @@ namespace sl::menu::ui {
                     break;
                 }
             }
-            std::string run_label = std::string("▶ ") + T("Running") + (run_name.empty() ? "" : (": " + run_name));
-            run_label = Ellipsize(run_label, 420, FontSize::Small);
-            const int rw = m_gfx->TextWidth(FontSize::Small, run_label.c_str()) + 24;
+            std::string run_label = std::string("▶ ") + (run_name.empty() ? T("Running") : run_name);
+            run_label = Ellipsize(run_label, 360, FontSize::Small);
+            const int rw = m_gfx->TextWidth(FontSize::Small, run_label.c_str()) + 28;
+            const int rh = 26;
             const int rx = (gfx::Gfx::Width - rw) / 2;
-            m_gfx->GlowRect(rx, 14, rw, 24, t.accent, 10);
-            m_gfx->FillRect(rx, 14, rw, 24, WithAlpha(t.accent, 220));
-            m_gfx->TextCentered(FontSize::Small, gfx::Gfx::Width / 2, 17, t.bg_bottom, run_label.c_str());
+            const int ry = 13;
+
+            gfx::Gfx::CardStyle cs;
+            cs.radius   = rh * 0.5f; // perfectly rounded capsule pill
+            cs.shadow   = 8.0f;
+            cs.glow     = 0.55f;
+            cs.glow_col = t.accent;
+            cs.fill     = WithAlpha(t.bg_bottom, 225);
+            if (!m_gfx->Card(nullptr, (float)rx, (float)ry, (float)rw, (float)rh, cs, 255)) {
+                m_gfx->FillRect(rx, ry, rw, rh, WithAlpha(t.bg_bottom, 225));
+            }
+            m_gfx->TextCentered(FontSize::Small, gfx::Gfx::Width / 2, ry + 3, t.accent, run_label.c_str());
         }
 
         (void)kTopBarH;
