@@ -2145,7 +2145,7 @@ namespace sl::menu::ui {
                     kMuBarY - lh - 6, t.dim, tot.c_str());
 
         DrawHint({ {{"a"}, m_music_cursor == cur && m_music.Enabled() ? "Pause" : "Play"},
-                   {{"left","right"}, "Seek"}, {{"l","r"}, "Track"},
+                   {{"l","r"}, "Track"},
                    {{"y"}, "Upload from phone (QR)"},
                    {{"x"}, "Repeat"}, {{"minus","plus"}, "Volume"} });
     }
@@ -3439,12 +3439,24 @@ namespace sl::menu::ui {
     void Menu::DrawKeyboard() {
         const Theme &t = m_theme.Current();
         const int cx = gfx::Gfx::Width / 2;
-        DrawTopBar("Rename");
+        const char *kb_title = "Rename";
+        switch (m_kb_purpose) {
+            case sl::smi::Kb_Search:       kb_title = "Search"; break;
+            case sl::smi::Kb_RenameGame:   kb_title = "Rename"; break;
+            case sl::smi::Kb_FileRename:   kb_title = "Rename file"; break;
+            case sl::smi::Kb_NewFolder:    kb_title = "New folder"; break;
+            case sl::smi::Kb_ThemeName:    kb_title = "Theme name"; break;
+            case sl::smi::Kb_WidgetOption: kb_title = "Option"; break;
+            case sl::smi::Kb_SteamGridKey: kb_title = "SteamGridDB Key"; break;
+            default:                       kb_title = "Rename"; break;
+        }
+        DrawTopBar(kb_title);
 
         // Current text in an input box.
         m_gfx->FillRect(cx - 400, 130, 800, 60, WithAlpha(t.fg, 24));
         m_gfx->FillRect(cx - 400, 186, 800, 3, t.accent);
-        std::string shown = m_kb_text.empty() ? T("(empty)") : m_kb_text;
+        std::string placeholder = (m_kb_purpose == sl::smi::Kb_Search) ? T("Search games...") : T("(empty)");
+        std::string shown = m_kb_text.empty() ? placeholder : m_kb_text;
         m_gfx->Text(FontSize::Large, cx - 384, 142,
                     m_kb_text.empty() ? t.dim : t.fg, shown.c_str());
 

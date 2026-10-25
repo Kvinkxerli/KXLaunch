@@ -2114,11 +2114,13 @@ namespace sl::menu::ui {
     void Menu::DrawBackTap() {
         const Theme &t = m_theme.Current();
         const int icon = 22;
-        const int cy = kBackTapY + kBackTapH / 2;
+        const int lh = m_gfx->LineHeight(FontSize::Small);
+        const int y  = kHintY;
+        const int iy = kHintY + (lh - icon) / 2;
         const int ix = kBackTapX + 4;
         if (SDL_Texture *tex = HintIcon("b"))
-            m_gfx->DrawImageTinted(tex, ix, cy - icon / 2, icon, icon, t.dim, 200);
-        m_gfx->Text(FontSize::Small, ix + icon + 6, cy - m_gfx->LineHeight(FontSize::Small) / 2,
+            m_gfx->DrawImageTinted(tex, ix, iy, icon, icon, t.dim, 200);
+        m_gfx->Text(FontSize::Small, ix + icon + 6, y,
                     WithAlpha(t.dim, 200), T("Back"));
     }
     // XMB-styled sub-screen list.

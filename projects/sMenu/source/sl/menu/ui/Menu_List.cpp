@@ -315,9 +315,9 @@ namespace sl::menu::ui {
         m_gfx->TextCentered(FontSize::Small, center_x, name_y + 48, t.dim, pos);
 
         if (is_run) {
-            DrawStatusHint({ {{"a"}, "Resume"}, {{"y"}, "Profile"}, {{"x"}, "Close game"}, {{"+"}, "Power"} });
+            DrawStatusHint({ {{"a"}, "Resume"}, {{"x"}, "Close game"}, {{"y"}, "Search"} });
         } else {
-            DrawStatusHint({ {{"a"}, "Select"}, {{"y"}, "Profile"}, {{"x"}, "Options"}, {{"+"}, "Power"} });
+            DrawStatusHint({ {{"a"}, "Select"}, {{"x"}, "Options"}, {{"y"}, "Search"} });
         }
     }
 } // namespace sl::menu::ui

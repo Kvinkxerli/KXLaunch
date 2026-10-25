@@ -482,7 +482,7 @@ namespace sl::menu::ui {
             "asdfghjkl",
             "zxcvbnm",
         };
-        inline const char *kKbSpecial[5] = { "Shift", "Space", "Back", "Clear", "Done" };
+        inline const char *kKbSpecial[5] = { "Shift", "Space", "Backspace", "Clear", "Done" };
         inline constexpr int kKbSpecialRow  = 4;
         inline constexpr int kKbSpecialCols = 5;
 
