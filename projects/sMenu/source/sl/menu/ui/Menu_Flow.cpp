@@ -1262,7 +1262,9 @@ namespace sl::menu::ui {
 
             const float prox = std::max(0.0f, 1.0f - std::abs(p));
             const Uint8 lit  = (Uint8)(150 + 105 * prox);
-            const SDL_Color tint { lit, lit, lit, 255 };
+            const Uint8 arc_lit = it.is_archived ? (Uint8)(lit * 135 / 255) : lit;
+            const Uint8 arc_sat = it.is_archived ? (Uint8)45 : (Uint8)255;
+            const SDL_Color tint { arc_lit, arc_lit, arc_lit, arc_sat };
             // The bare case, under whatever is printed on it.
             const Uint8 bl = (Uint8)(18 + 14 * prox);
             const SDL_Color blank { bl, bl, bl, 255 };
@@ -1599,8 +1601,14 @@ namespace sl::menu::ui {
             // Position counters are optional; blanking the string here keeps
             // the layout arithmetic below untouched.
             if (!m_show_counter) pos[0] = '\0';
+            std::string sub_pos;
+            if (cur.is_archived) sub_pos = T("Archived");
+            if (m_show_counter && pos[0] != '\0') {
+                if (!sub_pos.empty()) sub_pos += "   ";
+                sub_pos += pos;
+            }
             m_gfx->TextCentered(FontSize::Small, W / 2,
-                                ty + m_gfx->LineHeight(FontSize::Large) + 4, t.dim, pos);
+                                ty + m_gfx->LineHeight(FontSize::Large) + 4, t.dim, sub_pos.c_str());
         }
 
         DrawFetchStatus();

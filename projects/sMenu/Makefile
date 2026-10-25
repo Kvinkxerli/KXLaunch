@@ -30,6 +30,10 @@ SDL_LIBS   := -L$(DEVKITPRO)/portlibs/switch/lib \
 CURL_CFLAGS := -I$(DEVKITPRO)/portlibs/switch/include
 CURL_LIBS   := -L$(DEVKITPRO)/portlibs/switch/lib -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lz
 
+FFMPEG_PREFIX := $(DEVKITPRO)/FFmpegLibs
+FFMPEG_CFLAGS := -I$(FFMPEG_PREFIX)/include
+FFMPEG_LIBS   := -L$(FFMPEG_PREFIX)/lib -lavformat -lavcodec -lavutil
+
 # Output path on SD layout
 SDOUT  := ../../SdOut
 OUTDIR := $(SDOUT)/slaunch/bin/sMenu
@@ -45,13 +49,11 @@ APP_VERSION := 1.5.0
 INCLUDE  := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
             -I$(DEVKITPRO)/libnx/include -I$(DEVKITPRO)/portlibs/switch/include
 
-LIBDIRS  := $(DEVKITPRO)/portlibs/switch $(DEVKITPRO)/libnx
-
 ARCH     := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
 CFLAGS    = -g -Wall -O2 -ffunction-sections -fdata-sections -fvisibility=default $(ARCH) \
-            $(INCLUDE) $(SDL_CFLAGS) $(CURL_CFLAGS) \
-            -DSL_VERSION=\"$(APP_VERSION)\"
+            $(INCLUDE) $(SDL_CFLAGS) $(CURL_CFLAGS) $(FFMPEG_CFLAGS) \
+            -DSL_VERSION=\"$(APP_VERSION)\" -DSL_HAS_VIDEO=1 -DSL_HAS_NVTEGRA=1
 
 CXXFLAGS  = $(CFLAGS) -std=gnu++20 -fno-rtti -fno-exceptions
 
@@ -61,9 +63,9 @@ LDFLAGS  := -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) \
             -Wl,-Map,$(BUILD)/$(TARGET).map \
             -Wl,--unresolved-symbols=ignore-in-shared-libs
 
-LIBS     := $(CURL_LIBS) $(SDL_LIBS)
+LIBS     := $(CURL_LIBS) $(FFMPEG_LIBS) $(SDL_LIBS) -lnx
 
-LIBDIRS  := $(PORTLIBS) $(LIBNX)
+LIBDIRS  := $(PORTLIBS) $(LIBNX) $(FFMPEG_PREFIX)
 
 #---------------------------------------------------------------------------------
 CFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))

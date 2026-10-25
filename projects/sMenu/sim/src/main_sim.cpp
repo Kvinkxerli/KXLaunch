@@ -48,9 +48,17 @@ namespace {
             char *t1 = strchr(line,   '\t'); if (!t1) continue; *t1 = '\0';
             char *t2 = strchr(t1 + 1, '\t'); if (!t2) continue; *t2 = '\0';
             char *t3 = strchr(t2 + 1, '\t'); if (!t3) continue; *t3 = '\0';
+            char *t4 = strchr(t3 + 1, '\t');
             const u64 id = strtoull(line, nullptr, 16);
-            if (id) e.push_back({ id, std::string(t3 + 1),
-                                  atoi(t1 + 1) != 0, atoi(t2 + 1) != 0 });
+            if (!id) continue;
+            if (t4) {
+                *t4 = '\0';
+                e.push_back({ id, std::string(t4 + 1),
+                              atoi(t1 + 1) != 0, atoi(t2 + 1) != 0, atoi(t3 + 1) != 0 });
+            } else {
+                e.push_back({ id, std::string(t3 + 1),
+                              atoi(t1 + 1) != 0, atoi(t2 + 1) != 0, false });
+            }
         }
         fclose(fp);
         return e;

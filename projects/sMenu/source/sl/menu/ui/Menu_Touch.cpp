@@ -177,7 +177,7 @@ namespace sl::menu::ui {
         if (m_screen != Screen::Main && !m_options_open && m_dialog == Dialog::None) {
             if (phase == 0 && m_screen == Screen::Music) { OnTouchMusic(x, y); return Action::None; }
             if (phase == 0 && m_screen == Screen::MusicUpload) { OnTouchMusicUpload(x, y); return Action::None; }
-            if (phase == 0 && m_screen == Screen::Album) { OnTouchAlbum(x, y); return Action::None; }
+            if (phase == 0 && m_screen == Screen::Album) { return OnTouchAlbum(x, y); }
             if (phase == 0 && m_screen == Screen::Files) { OnTouchFiles(x, y); return Action::None; }
             if (phase == 0) {
                 // Which cursor this screen drives, how many rows it has, and the

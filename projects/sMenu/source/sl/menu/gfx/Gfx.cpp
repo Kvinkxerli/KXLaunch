@@ -1288,7 +1288,12 @@ void main() {
     vec4 body = vec4(uFill.rgb * uFill.a, uFill.a);
     if (uOpt.x > 0.5) {
         vec4 tx = Sample((p - uRect.xy) / uRect.zw * uTexScale.xy);
-        if (uOpt.y > 0.5) tx = vec4(uTint.rgb, tx.a * uTint.a);
+        if (uOpt.y > 0.5) {
+            tx = vec4(uTint.rgb, tx.a * uTint.a);
+        } else {
+            float gray = dot(tx.rgb, vec3(0.299, 0.587, 0.114));
+            tx.rgb = mix(vec3(gray), tx.rgb, uTint.a) * uTint.rgb;
+        }
         body = vec4(tx.rgb * tx.a, tx.a) + body * (1.0 - tx.a);
     }
     if (uOpt.w > 0.0 && p.y > uRect.y + uRect.w - uOpt.w)   // label band
@@ -1382,7 +1387,11 @@ void main() {
     vec4 tx  = texture2D(uTex, vUV);
     if (uSwz.x > 0.5) tx = tx.bgra;
     if (uSwz.y > 0.5) tx.a = 1.0;
-    tx *= uTint;
+    if (uTint.a < 0.99) {
+        float gray = dot(tx.rgb, vec3(0.299, 0.587, 0.114));
+        tx.rgb = mix(vec3(gray), tx.rgb, uTint.a);
+    }
+    tx.rgb *= uTint.rgb;
     vec3 col = tx.rgb;
     if (uN.w > 0.0) {
         vec3 n = normalize(uN.xyz);
@@ -1412,7 +1421,7 @@ void main() {
         FxSet("uC3", c[3][0], c[3][1], c[3][2], 0.0f);
         FxSet("uUV", uv ? uv[0] : 0.0f, uv ? uv[1] : 0.0f, uv ? uv[2] : 1.0f, uv ? uv[3] : 1.0f);
         FxSet("uA", alpha_top / 255.0f, alpha_bottom / 255.0f, flip_v ? 1.0f : 0.0f, 0.0f);
-        FxSet("uTint", tint.r / 255.0f, tint.g / 255.0f, tint.b / 255.0f, 1.0f);
+        FxSet("uTint", tint.r / 255.0f, tint.g / 255.0f, tint.b / 255.0f, tint.a / 255.0f);
         // Face normal, turned to face the camera whichever way the corners run.
         const float ax = c[1][0] - c[0][0], ay = c[1][1] - c[0][1], az = c[1][2] - c[0][2];
         const float bx = c[3][0] - c[0][0], by = c[3][1] - c[0][1], bz = c[3][2] - c[0][2];

@@ -35,10 +35,10 @@ namespace sl::sys::ecs {
     // that opens it, so taking it over costs the user nothing. The daemon falls
     // through to it only when the shop slot never brings the menu up.
     constexpr MenuSlot MenuSlots[] = {
-        { AppletId_LibraryAppletShop,       "shop",
-          { 0x0100000000001042ULL, 0x010000000000100BULL }, 2 },
         { AppletId_LibraryAppletOfflineWeb, "offlineWeb",
           { 0x010000000000100FULL, 0 },                     1 },
+        { AppletId_LibraryAppletShop,       "shop",
+          { 0x0100000000001042ULL, 0x010000000000100BULL }, 2 },
     };
     constexpr size_t MenuSlotCount = sizeof(MenuSlots) / sizeof(MenuSlots[0]);
 

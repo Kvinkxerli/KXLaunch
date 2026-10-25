@@ -58,7 +58,13 @@ namespace sl::sys::la {
                             const void *in1, size_t in1_size,
                             const void *in2, size_t in2_size) {
         AppletHolder holder;
-        Result rc = appletCreateLibraryApplet(&holder, id, LibAppletMode_AllForeground);
+        Result rc = 0;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            if (attempt > 0)
+                svcSleepThread(200'000'000ULL);
+            rc = appletCreateLibraryApplet(&holder, id, LibAppletMode_AllForeground);
+            if (rc == 0) break;
+        }
         if (rc != 0) return rc;
 
         // A negative version means the applet is started without common args.

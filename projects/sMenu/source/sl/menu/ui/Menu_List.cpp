@@ -82,9 +82,18 @@ namespace sl::menu::ui {
                     const Uint8 ia = game ? alpha : (Uint8)(alpha * 195 / 255);
                     // Real artwork is blitted as it is; a system glyph takes the
                     // theme's icon colour, the way the plate behind it does.
-                    if (art) m_gfx->DrawImage(ic, 38, y + (lh - isz) / 2, isz, isz, ia);
-                    else     m_gfx->DrawImageTinted(ic, 38, y + (lh - isz) / 2, isz, isz,
-                                                    IconTint(t, ia));
+                    if (art) {
+                        if (it.is_archived) {
+                            SDL_SetTextureColorMod(ic, 130, 130, 130);
+                            m_gfx->DrawImage(ic, 38, y + (lh - isz) / 2, isz, isz, (Uint8)(ia * 180 / 255));
+                            SDL_SetTextureColorMod(ic, 255, 255, 255);
+                        } else {
+                            m_gfx->DrawImage(ic, 38, y + (lh - isz) / 2, isz, isz, ia);
+                        }
+                    } else {
+                        m_gfx->DrawImageTinted(ic, 38, y + (lh - isz) / 2, isz, isz,
+                                               IconTint(t, ia));
+                    }
                 }
             }
 
@@ -97,7 +106,7 @@ namespace sl::menu::ui {
 
             if (sel)
                 m_gfx->Text(FontSize::Large, tx - 34, y, WithAlpha(t.accent, alpha), ">");
-            const SDL_Color name_col = (running || big) ? t.accent : t.fg;
+            const SDL_Color name_col = (running || big) ? t.accent : (it.is_archived ? t.dim : t.fg);
             m_gfx->Text(fs, tx, y, WithAlpha(name_col, alpha), label.c_str());
 
             if (running) {
@@ -164,6 +173,7 @@ namespace sl::menu::ui {
         cs.reflect  = reflect;
         if (art) {
             cs.fill = t.bg_bottom;
+            if (it.is_archived) cs.tint = kArchivedTint;
         } else if (icon) {
             cs.fill  = IconPlate(t, 255);
             cs.glyph = true;
@@ -175,7 +185,13 @@ namespace sl::menu::ui {
 
         if (!carded) {
             if (art) {
-                m_gfx->DrawImage(icon, x, y, size, size, alpha);   // real artwork
+                if (it.is_archived) {
+                    SDL_SetTextureColorMod(icon, 130, 130, 130);
+                    m_gfx->DrawImage(icon, x, y, size, size, (Uint8)(alpha * 180 / 255));
+                    SDL_SetTextureColorMod(icon, 255, 255, 255);
+                } else {
+                    m_gfx->DrawImage(icon, x, y, size, size, alpha);   // real artwork
+                }
             } else if (icon) {
                 // System entries: the themed plate, then the artwork on top of it.
                 m_gfx->FillRect(x, y, size, size, IconPlate(t, alpha));

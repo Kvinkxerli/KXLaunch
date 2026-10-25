@@ -190,16 +190,34 @@ namespace sl::menu::ui {
                     wide = fs.a ? fs.a : fs.b;
                 }
                 if (wide) {
-                    m_gfx->DrawImage(wide, x, kDeckRowY, w, kDeckRowH, 255);
+                    if (it.is_archived) {
+                        SDL_SetTextureColorMod(wide, 130, 130, 130);
+                        m_gfx->DrawImage(wide, x, kDeckRowY, w, kDeckRowH, 180);
+                        SDL_SetTextureColorMod(wide, 255, 255, 255);
+                    } else {
+                        m_gfx->DrawImage(wide, x, kDeckRowY, w, kDeckRowH, 255);
+                    }
                 } else if (SDL_Texture *cov = FlowCover(it)) {
                     const int cw = (kDeckRowH * 2) / 3;
-                    m_gfx->DrawImage(cov, x + (w - cw) / 2, kDeckRowY, cw, kDeckRowH, 255);
+                    if (it.is_archived) {
+                        SDL_SetTextureColorMod(cov, 130, 130, 130);
+                        m_gfx->DrawImage(cov, x + (w - cw) / 2, kDeckRowY, cw, kDeckRowH, 180);
+                        SDL_SetTextureColorMod(cov, 255, 255, 255);
+                    } else {
+                        m_gfx->DrawImage(cov, x + (w - cw) / 2, kDeckRowY, cw, kDeckRowH, 255);
+                    }
                 } else {
                     const int sq = kDeckRowH - 96;
                     DrawAppTile(it, x + (w - sq) / 2, kDeckRowY + 48, sq, false, 255);
                 }
             } else if (SDL_Texture *cov = FlowCover(it)) {
-                m_gfx->DrawImage(cov, x, kDeckRowY, w, kDeckRowH, sel ? 255 : 235);
+                if (it.is_archived) {
+                    SDL_SetTextureColorMod(cov, 130, 130, 130);
+                    m_gfx->DrawImage(cov, x, kDeckRowY, w, kDeckRowH, sel ? 180 : 160);
+                    SDL_SetTextureColorMod(cov, 255, 255, 255);
+                } else {
+                    m_gfx->DrawImage(cov, x, kDeckRowY, w, kDeckRowH, sel ? 255 : 235);
+                }
             } else {
                 // No box art: the square icon, centred on the tile at a size it
                 // was drawn for. Blown up to the full tile it reads as a broken
@@ -615,11 +633,18 @@ namespace sl::menu::ui {
             const bool running = (it.kind == ItemKind::Game && m_suspended != 0 && it.app_id == m_suspended);
 
             m_gfx->FillRect(x, y, kDeckLibW, kDeckLibH, WithAlpha(t.bg_bottom, 230));
-            if (SDL_Texture *cov = FlowCover(it))
-                m_gfx->DrawImage(cov, x, y, kDeckLibW, kDeckLibH, 255);
-            else
+            if (SDL_Texture *cov = FlowCover(it)) {
+                if (it.is_archived) {
+                    SDL_SetTextureColorMod(cov, 130, 130, 130);
+                    m_gfx->DrawImage(cov, x, y, kDeckLibW, kDeckLibH, 180);
+                    SDL_SetTextureColorMod(cov, 255, 255, 255);
+                } else {
+                    m_gfx->DrawImage(cov, x, y, kDeckLibW, kDeckLibH, 255);
+                }
+            } else {
                 DrawAppTile(it, x, y + (kDeckLibH - kDeckLibW) / 2, kDeckLibW,
                             false, 255);
+            }
 
             if (running) {
                 const int bh = 22;

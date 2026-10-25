@@ -509,17 +509,26 @@ namespace sl::menu::ui {
         // Windows 10 Mobile tiles: square, flat, a little see-through so the
         // background shows between and through them; the name sits straight
         // on the colour, and only a picture gets a band to keep it readable.
-        auto base = [&](SDL_Texture *img, SDL_Color fill, bool band = true) {
+        auto base = [&](SDL_Texture *img, SDL_Color fill, bool band = true, bool archived = false) {
             if (pass == 1) return;
             gfx::Gfx::CardStyle cs;
             cs.radius   = 0.0f;
             cs.shadow   = 0.0f;
             cs.fill     = WithAlpha(fill, img ? 255 : 218);
             cs.band     = (band && img) ? 30.0f : 0.0f;
+            if (archived) cs.tint = kArchivedTint;
             carded = m_gfx->Card(img, (float)r.x, (float)r.y, (float)r.w, (float)r.h, cs, a);
             if (!carded) {
                 m_gfx->FillRect(r.x, r.y, r.w, r.h, WithAlpha(fill, a));
-                if (img) m_gfx->DrawImage(img, r.x, r.y, r.w, r.h, a);
+                if (img) {
+                    if (archived) {
+                        SDL_SetTextureColorMod(img, 130, 130, 130);
+                        m_gfx->DrawImage(img, r.x, r.y, r.w, r.h, (Uint8)(a * 180 / 255));
+                        SDL_SetTextureColorMod(img, 255, 255, 255);
+                    } else {
+                        m_gfx->DrawImage(img, r.x, r.y, r.w, r.h, a);
+                    }
+                }
             }
         };
         const bool wide = (r.w > TileUnit());
@@ -595,12 +604,20 @@ namespace sl::menu::ui {
             const int  fit    = std::min(r.w, r.h);
             const int  sz     = tinted ? (fit * 5) / 8 : fit;
             if (icon && !tinted && sz == r.w && sz == r.h) {
-                base(icon, face);                 // artwork edge to edge
+                base(icon, face, true, it.is_archived);                 // artwork edge to edge
             } else {
                 base(nullptr, face);
-                if (icon && rest)
-                    m_gfx->DrawImage(icon, r.x + (r.w - sz) / 2,
-                                     r.y + (r.h - sz) / 2 - (tinted ? 8 : 0), sz, sz, a);
+                if (icon && rest) {
+                    if (it.is_archived) {
+                        SDL_SetTextureColorMod(icon, 130, 130, 130);
+                        m_gfx->DrawImage(icon, r.x + (r.w - sz) / 2,
+                                         r.y + (r.h - sz) / 2 - (tinted ? 8 : 0), sz, sz, (Uint8)(a * 180 / 255));
+                        SDL_SetTextureColorMod(icon, 255, 255, 255);
+                    } else {
+                        m_gfx->DrawImage(icon, r.x + (r.w - sz) / 2,
+                                         r.y + (r.h - sz) / 2 - (tinted ? 8 : 0), sz, sz, a);
+                    }
+                }
             }
         } else {
             // System tiles are a solid block with the glyph centred.
@@ -626,7 +643,7 @@ namespace sl::menu::ui {
         }
         m_gfx->Text(FontSize::Small, r.x + 10,
                     r.y + r.h - band + (band - m_gfx->LineHeight(FontSize::Small)) / 2,
-                    WithAlpha(t.fg, a),
+                    WithAlpha(it.is_archived ? t.dim : t.fg, a),
                     Ellipsize(label, r.w - 20, FontSize::Small).c_str());
 
         const bool running = (it.kind == ItemKind::Game && m_suspended != 0 && it.app_id == m_suspended);

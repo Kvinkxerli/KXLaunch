@@ -13,8 +13,12 @@
 // siblings via a quoted "Menu_Internal.hpp", not from include/.
 
 #include <sl/menu/ui/Menu.hpp>
+#include <sl/menu/ui/Locale.hpp>
+#include <SDL2/SDL_image.h>
 #include <sys/stat.h>
 #include <cstdio>
+#include <cmath>
+#include <algorithm>
 
 namespace sl::menu::ui {
 
@@ -47,6 +51,9 @@ namespace sl::menu::ui {
     inline constexpr const char *kTdbRegions[] = { "US", "EN", "JA", "FR", "DE",
                                                    "ES", "IT", "AU", "KO", "ZH", "RU" };
     inline constexpr int kTdbRegionCount = (int)(sizeof(kTdbRegions) / sizeof(kTdbRegions[0]));
+
+    // Visual tint for archived games: muted brightness and desaturated (low alpha = low saturation in Card/Quad shaders)
+    inline constexpr SDL_Color kArchivedTint = { 135, 135, 135, 45 };
 
     // Music player layout, shared by DrawMusic and its touch handler.
     inline constexpr int kMuArtX = 80, kMuArtY = 110, kMuArt = 300;
@@ -652,6 +659,11 @@ namespace sl::menu::ui {
         struct LogLine { bool head; const char *text; };
         // Newest first. Headers are version tags; the rest are one-line summaries.
         inline const LogLine kChangelog[] = {
+            { true,  "v1.5.1 (KXLaunch)" },
+            { false, "Archived games: distinct gray muted icons across all 8 layouts + launch warning" },
+            { false, "Instant dynamic sync of archived games and gamecards without reloading menu" },
+            { false, "Overlay focus fix: ignores menu input while Tesla / Ultrahand overlay is open" },
+            { false, "Album touch fix: tapping photos and video clips directly opens and plays them" },
             { true,  "v1.5.0 (KXLaunch)" },
             { false, "Phone Music Upload: QR-code + mobile web uploader for MP3/FLAC/OGG/WAV" },
             { false, "Offline User Profile selector before game launch (no account linking prompt)" },

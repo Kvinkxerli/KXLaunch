@@ -327,6 +327,8 @@ namespace sl::menu::ui {
             const std::string *custom = CustomName(a.app_id);
             it.name = custom ? *custom : a.name;
             it.is_gamecard  = a.is_gamecard;
+            it.needs_update = a.needs_update;
+            it.is_archived  = a.is_archived;
             it.is_favourite = IsFavourite(a.app_id);
             (it.is_favourite ? favs : rest).push_back(std::move(it));
         }
@@ -1074,6 +1076,10 @@ namespace sl::menu::ui {
             case ItemKind::WidgetTile:
                 return Action::None;
             case ItemKind::Game:
+                if (it.is_archived) {
+                    SetStatus(T("Game is archived"));
+                    return Action::None;
+                }
                 if (m_suspended != 0 && it.app_id == m_suspended) {
                     if (m_ui_mode == UiMode::Flow) {
                         StartLaunchAnim(Action::ResumeApp, it.app_id);

@@ -92,6 +92,7 @@ years ago=years ago
 Loading games...=Loading games...
 No apps found=No apps found
 Game card=Game card
+Archived=Archived
 Nintendo Switch=Nintendo Switch
 Running=Running
 Update available=Update available
@@ -705,4 +706,6 @@ Launch as user...=Launch as user...
 Profile=Profile
 Active=Active
 Choose=Choose
+Archived=Archived
+Game is archived=Game is archived
 

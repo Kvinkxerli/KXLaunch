@@ -401,11 +401,23 @@ static void RunPendingAction() {
             else                   LaunchMenu();
             break;
         case Pending::OpenAlbum: {
-            // Photo viewer: version 0x10000, 1-byte "show all album files for
-            // home menu" arg.
+            DaemonLog("album: unregistering hbloader if needed");
+            ecs::UnregisterExternalContent(ecs::HbloaderProgramId);
+            DaemonLog("album: launching photo viewer applet");
             const u8 album_arg = AlbumLaArg_ShowAllAlbumFilesForHomeMenu;
-            la::OpenSystemApplet(AppletId_LibraryAppletPhotoViewer, 0x10000,
-                                 &album_arg, sizeof(album_arg));
+            Result rc = la::OpenSystemApplet(AppletId_LibraryAppletPhotoViewer, 0x10000,
+                                             &album_arg, sizeof(album_arg));
+            DaemonLog("album: OpenSystemApplet(ShowAllAlbumFilesForHomeMenu) rc=0x%x", rc);
+            if (R_FAILED(rc)) {
+                const u8 arg_all = AlbumLaArg_ShowAllAlbumFiles;
+                rc = la::OpenSystemApplet(AppletId_LibraryAppletPhotoViewer, 0x10000,
+                                         &arg_all, sizeof(arg_all));
+                DaemonLog("album: fallback OpenSystemApplet(ShowAllAlbumFiles) rc=0x%x", rc);
+            }
+            if (R_FAILED(rc)) {
+                rc = la::OpenSystemApplet(AppletId_LibraryAppletPhotoViewer, 1);
+                DaemonLog("album: fallback OpenSystemApplet(v1) rc=0x%x", rc);
+            }
             LaunchMenu();
             break;
         }

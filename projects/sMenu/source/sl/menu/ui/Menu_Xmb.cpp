@@ -264,7 +264,13 @@ namespace sl::menu::ui {
                           : isHb   ? m_hb_icons.Get(it.hb_icon)
                                    : SystemIcon(it.kind);
         if (icon && (isGame || isHb)) {
-            m_gfx->DrawImage(icon, x, y, size, size, alpha);
+            if (it.is_archived) {
+                SDL_SetTextureColorMod(icon, 130, 130, 130);
+                m_gfx->DrawImage(icon, x, y, size, size, (Uint8)(alpha * 180 / 255));
+                SDL_SetTextureColorMod(icon, 255, 255, 255);
+            } else {
+                m_gfx->DrawImage(icon, x, y, size, size, alpha);
+            }
         } else if (icon) {
             m_gfx->FillRect(x, y, size, size, IconPlate(t, alpha));
             m_gfx->DrawImageTinted(icon, x, y, size, size, IconTint(t, alpha));
@@ -414,6 +420,7 @@ namespace sl::menu::ui {
 
         std::string info;
         if (sel.app_id != 0 && sel.app_id == m_suspended) info = T("Running");
+        else if (sel.is_archived)                         info = T("Archived");
         else if (sel.is_gamecard)                         info = T("Game card");
         if (const play::PlayInfo *pi = Play(sel.app_id)) {
             if (pi->seconds > 0) {

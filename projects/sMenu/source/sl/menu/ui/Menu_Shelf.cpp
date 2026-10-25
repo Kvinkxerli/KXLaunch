@@ -85,7 +85,9 @@ namespace sl::menu::ui {
                                        { x + hw, floor_y - 2 * hh, z }, { x - hw, floor_y - 2 * hh, z } };
 
             const Uint8 lit = (Uint8)(150 + 105 * std::max(0.0f, 1.0f - std::abs(d)));
-            const SDL_Color tint{ lit, lit, lit, 255 };
+            const Uint8 arc_lit = it.is_archived ? (Uint8)(lit * 135 / 255) : lit;
+            const Uint8 arc_sat = it.is_archived ? (Uint8)45 : (Uint8)255;
+            const SDL_Color tint{ arc_lit, arc_lit, arc_lit, arc_sat };
             const Uint8 A = (Uint8)(255 * a);
 
             auto face = [&](const float q[4][3], bool mirror, Uint8 top, Uint8 bottom) {
@@ -152,8 +154,9 @@ namespace sl::menu::ui {
         m_gfx->Text(FontSize::Large, tx, ty, t.title,
                     Ellipsize(sel.name, gfx::Gfx::Width - tx - 60, FontSize::Large).c_str());
         const int lh = m_gfx->LineHeight(FontSize::Large);
-        std::string sub = sel.is_gamecard ? T("Game card")
-                        : (sel.kind == ItemKind::Game ? T("Nintendo Switch") : "");
+        std::string sub = sel.is_archived ? T("Archived")
+                        : (sel.is_gamecard ? T("Game card")
+                        : (sel.kind == ItemKind::Game ? T("Nintendo Switch") : ""));
         if (sel.app_id == m_suspended && m_suspended != 0) {
             sub = T("Running");
         } else if (const play::PlayInfo *pi = Play(sel.app_id)) {

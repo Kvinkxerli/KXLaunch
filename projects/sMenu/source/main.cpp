@@ -57,6 +57,7 @@ static bool  g_HomeAvailable = false;
 static Thread                       g_LoadThread = {};
 static std::vector<menu::ui::AppEntry> g_LoadResult;
 static std::vector<u64>             g_CachedIds;    // ids of the currently-shown list
+static std::vector<menu::ui::AppEntry> g_CachedApps; // entries of the currently-shown list
 static volatile bool                g_LoadDone = false;
 static volatile bool                g_LoadNoChange = false; // list unchanged -> keep cache
 static bool                         g_LoadRunning = false;
@@ -206,6 +207,15 @@ static std::vector<menu::ui::AppEntry> LoadAppEntries() {
     std::vector<NsApplicationView> views;
     os::ListApplicationViews(ids, views);
 
+    std::unordered_map<u64, u32> view_flags;
+    for (const auto &v : views) {
+        if (v.application_id != 0) {
+            u32 f = *reinterpret_cast<const u32*>(
+                        reinterpret_cast<const u8*>(&v) + 0xC);
+            view_flags[v.application_id] = f;
+        }
+    }
+
     mkdir("sdmc:/slaunch", 0777);
     mkdir("sdmc:/slaunch/cache", 0777);
     mkdir(IconCacheDir, 0777);
@@ -226,16 +236,54 @@ static std::vector<menu::ui::AppEntry> LoadAppEntries() {
     for (size_t i = 0; i < records.size(); i++) {
         u64 app_id = records[i].application_id;
 
-        // uLaunch shows *every* application record -- we never drop one. The
-        // view flags are only for the cosmetic gamecard/update badge. Note:
-        // NsApplicationView.flags is a u32 at offset 0xC (index 3); the old
-        // code read index 4 (garbage), so its can_launch filter hid every game.
-        bool gamecard = false, needs_upd = false;
-        if (i < views.size()) {
-            u32 f = *reinterpret_cast<const u32*>(
-                        reinterpret_cast<const u8*>(&views[i]) + 0xC);
-            gamecard  = (f & BIT(2)) != 0;
-            needs_upd = (f & BIT(4)) != 0;
+        u32 f = 0;
+        auto it_f = view_flags.find(app_id);
+        if (it_f != view_flags.end()) {
+            f = it_f->second;
+        } else if (i < views.size()) {
+            f = *reinterpret_cast<const u32*>(
+                    reinterpret_cast<const u8*>(&views[i]) + 0xC);
+        }
+
+        // Flags from SwitchU (ns_ext.hpp):
+        //   AppViewFlag_IsValid              = (1u << 0)
+        //   AppViewFlag_HasMainContents      = (1u << 1)
+        //   AppViewFlag_HasContentsInstalled = (1u << 4)
+        //   AppViewFlag_IsDownloading        = (1u << 5)
+        //   AppViewFlag_IsGameCard           = (1u << 6)
+        //   AppViewFlag_IsGameCardInserted   = (1u << 7)
+        //   AppViewFlag_CanLaunch            = (1u << 8)
+        //   AppViewFlag_NeedsUpdate          = (1u << 9)
+        //   AppViewFlag_NeedsVerify          = (1u << 13)
+        bool gamecard  = (f & (1u << 6)) != 0;
+        bool needs_upd = (f & (1u << 9)) != 0;
+
+        bool is_archived = false;
+        if (!gamecard) {
+            if (f != 0) {
+                // Primary: matching SwitchU. An application cannot be launched
+                // if CanLaunch (bit 8) is false.
+                // For a digital title, missing CanLaunch (bit 8) OR missing
+                // HasMainContents (bit 1) indicates main game data was deleted (archived).
+                if ((f & (1u << 8)) == 0 || (f & (1u << 1)) == 0)
+                    is_archived = true;
+            } else {
+                // Fallback: OS gave no view data — check content meta storage.
+                NsApplicationContentMetaStatus meta[8];
+                s32 meta_count = 0;
+                if (R_SUCCEEDED(nsListApplicationContentMetaStatus(
+                            app_id, 0, meta, 8, &meta_count))
+                        && meta_count > 0) {
+                    bool any_on_storage = false;
+                    for (s32 m = 0; m < meta_count; m++) {
+                        if (meta[m].storageID != NcmStorageId_None) {
+                            any_on_storage = true;
+                            break;
+                        }
+                    }
+                    if (!any_on_storage) is_archived = true;
+                }
+            }
         }
 
         // Fast path: reuse the cached name when its icon is already on disk. Only
@@ -263,7 +311,7 @@ static std::vector<menu::ui::AppEntry> LoadAppEntries() {
         }
 
         freshCache.emplace_back(app_id, name);
-        entries.push_back({ app_id, std::move(name), gamecard, needs_upd });
+        entries.push_back({ app_id, std::move(name), gamecard, needs_upd, is_archived });
     }
 
     // Rewrite the name cache when we resolved anything new or the library set
@@ -275,7 +323,7 @@ static std::vector<menu::ui::AppEntry> LoadAppEntries() {
 }
 
 // Persisted copy of the fully-resolved list, so a relaunch shows games on the
-// first frame instead of re-enumerating. Format per line: hexid<TAB>gc<TAB>upd<TAB>name.
+// first frame instead of re-enumerating. Format per line: hexid<TAB>gc<TAB>upd<TAB>arc<TAB>name.
 static constexpr const char *AppListCache = "sdmc:/slaunch/cache/applist.txt";
 
 static void SaveAppList(const std::vector<menu::ui::AppEntry> &e) {
@@ -284,25 +332,40 @@ static void SaveAppList(const std::vector<menu::ui::AppEntry> &e) {
     FILE *fp = fopen(AppListCache, "w");
     if (!fp) return;
     for (auto &a : e)
-        fprintf(fp, "%016llX\t%d\t%d\t%s\n", (unsigned long long)a.app_id,
-                a.is_gamecard ? 1 : 0, a.needs_update ? 1 : 0, a.name.c_str());
+        fprintf(fp, "%016llX\t%d\t%d\t%d\t%s\n", (unsigned long long)a.app_id,
+                a.is_gamecard ? 1 : 0, a.needs_update ? 1 : 0, a.is_archived ? 1 : 0,
+                a.name.c_str());
     fclose(fp);
 }
 
+static bool g_AppListHasArchivedCol = false;
+
 static std::vector<menu::ui::AppEntry> LoadAppList() {
     std::vector<menu::ui::AppEntry> e;
+    g_AppListHasArchivedCol = false;
     FILE *fp = fopen(AppListCache, "r");
     if (!fp) return e;
     char line[320];
+    bool all_have_arc = true;
     while (fgets(line, sizeof(line), fp)) {
         line[strcspn(line, "\r\n")] = '\0';
         char *t1 = strchr(line,   '\t'); if (!t1) continue; *t1 = '\0';
         char *t2 = strchr(t1 + 1, '\t'); if (!t2) continue; *t2 = '\0';
         char *t3 = strchr(t2 + 1, '\t'); if (!t3) continue; *t3 = '\0';
+        char *t4 = strchr(t3 + 1, '\t');
         u64 id = strtoull(line, nullptr, 16);
-        if (id) e.push_back({ id, std::string(t3 + 1), atoi(t1 + 1) != 0, atoi(t2 + 1) != 0 });
+        if (!id) continue;
+        if (t4) {
+            *t4 = '\0';
+            e.push_back({ id, std::string(t4 + 1), atoi(t1 + 1) != 0, atoi(t2 + 1) != 0, atoi(t3 + 1) != 0 });
+        } else {
+            all_have_arc = false;
+            e.push_back({ id, std::string(t3 + 1), atoi(t1 + 1) != 0, atoi(t2 + 1) != 0, false });
+        }
     }
     fclose(fp);
+    if (!e.empty() && all_have_arc)
+        g_AppListHasArchivedCol = true;
     return e;
 }
 
@@ -316,14 +379,70 @@ static std::vector<u64> CurrentAppIds() {
 }
 
 static void LoadAppsTrampoline(void *) {
-    // Cheap check first: if the installed title set matches what we're already
-    // showing, do nothing (no per-app work). Only re-resolve when it changed.
+    // Check installed title set first
     std::vector<u64> ids = CurrentAppIds();
-    if (!ids.empty() && ids == g_CachedIds) {
-        g_LoadNoChange = true;
+    if (!ids.empty() && ids == g_CachedIds && g_AppListHasArchivedCol && !g_CachedApps.empty()) {
+        // IDs haven't changed, but dynamic flags (archived, gamecard, update)
+        // might have changed while the user was in settings or another app.
+        // Querying application views is a single cheap IPC call (< 1ms).
+        std::vector<NsApplicationView> views;
+        os::ListApplicationViews(ids, views);
+        std::unordered_map<u64, u32> view_flags;
+        for (const auto &v : views) {
+            if (v.application_id != 0) {
+                u32 f = *reinterpret_cast<const u32*>(
+                            reinterpret_cast<const u8*>(&v) + 0xC);
+                view_flags[v.application_id] = f;
+            }
+        }
+
+        bool flags_changed = false;
+        auto updated = g_CachedApps;
+        for (size_t i = 0; i < updated.size(); i++) {
+            auto &a = updated[i];
+            u32 f = 0;
+            auto it = view_flags.find(a.app_id);
+            if (it != view_flags.end()) {
+                f = it->second;
+            } else if (i < views.size()) {
+                f = *reinterpret_cast<const u32*>(
+                        reinterpret_cast<const u8*>(&views[i]) + 0xC);
+            }
+
+            bool gc  = (f & (1u << 6)) != 0;
+            bool upd = (f & (1u << 9)) != 0;
+            bool arc = false;
+            if (!gc) {
+                if (f != 0) {
+                    if ((f & (1u << 8)) == 0 || (f & (1u << 1)) == 0)
+                        arc = true;
+                } else {
+                    arc = a.is_archived;
+                }
+            }
+
+            if (a.is_gamecard != gc || a.needs_update != upd || a.is_archived != arc) {
+                a.is_gamecard  = gc;
+                a.needs_update = upd;
+                a.is_archived  = arc;
+                flags_changed  = true;
+            }
+        }
+
+        if (flags_changed) {
+            g_CachedApps = updated;
+            g_LoadResult = std::move(updated);
+            SaveAppList(g_LoadResult);
+            g_LoadNoChange = false;
+        } else {
+            g_LoadNoChange = true;
+        }
     } else {
         g_LoadResult = LoadAppEntries();
+        g_CachedApps = g_LoadResult;
         SaveAppList(g_LoadResult);
+        g_AppListHasArchivedCol = true;
+        g_LoadNoChange = false;
     }
     g_LoadDone = true;
 }
@@ -602,6 +721,7 @@ int main() {
         if (!cached.empty()) {
             g_CachedIds.clear();
             for (auto &a : cached) g_CachedIds.push_back(a.app_id);
+            g_CachedApps = cached;
             ui.SetApps(std::move(cached));
         } else {
             ui.SetLoading(true);
@@ -675,6 +795,7 @@ int main() {
             if (!g_LoadNoChange) {              // list changed -> apply the fresh one
                 g_CachedIds.clear();
                 for (auto &a : g_LoadResult) g_CachedIds.push_back(a.app_id);
+                g_CachedApps = g_LoadResult;
                 ui.SetApps(std::move(g_LoadResult));
             }
             ui.SetLoading(false);
@@ -691,6 +812,22 @@ int main() {
         // a still finger sends no motion, so otherwise a held touch reads as a
         // release each frame and a long-press never accumulates.
         static bool mouse_down = false; static int mouse_x = 0, mouse_y = 0;
+
+        // If the applet is out of focus (e.g. Ultrahand / Tesla overlay open,
+        // system overlay or transition), discard inputs and do not process buttons or touch.
+        if (appletGetFocusState() != AppletFocusState_InFocus) {
+            held_v = 0;
+            held_h = 0;
+            mouse_down = false;
+            SDL_Event ev;
+            while (SDL_PollEvent(&ev)) {
+                if (ev.type == SDL_QUIT) { g_Running = false; break; }
+            }
+            ui.Render();
+            svcSleepThread(16'666'666ULL);
+            continue;
+        }
+
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
             last_activity_tick = armGetSystemTick();

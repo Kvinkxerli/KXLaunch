@@ -94,6 +94,7 @@ namespace sl::menu::ui {
         bool        is_gamecard  = false;
         bool        needs_update = false;
         bool        is_favourite = false;
+        bool        is_archived  = false;
         std::string hb_path;   // ItemKind::Homebrew: the .nro to launch
         // Argv to hand that .nro. Empty means "just its own path", which is the
         // hbmenu convention and what a plain homebrew launch has always sent;
@@ -116,6 +117,7 @@ namespace sl::menu::ui {
         std::string name;
         bool        is_gamecard;
         bool        needs_update;
+        bool        is_archived = false;
     };
 
     class Menu {
@@ -1324,7 +1326,7 @@ namespace sl::menu::ui {
         Action OnButtonMusicUpload(Btn b);
         void  DrawMusicUpload();
         void  OnTouchMusicUpload(int x, int y);
-        void  OnTouchAlbum(int x, int y);
+        Action OnTouchAlbum(int x, int y);
         static std::string FormatTime(double seconds);   // m:ss / h:mm:ss
         // Cover of the current track (audio::Music::CoverArt), decoded once per
         // track change. The index is cached even when there is no art, so a
