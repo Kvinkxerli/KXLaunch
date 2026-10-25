@@ -895,7 +895,7 @@ namespace sl::menu::ui {
         DrawTopBar("About");
         const int cx = gfx::Gfx::Width / 2;
 
-        m_gfx->TextCentered(FontSize::Large, cx, 92, t.title, "sLaunch");
+        m_gfx->TextCentered(FontSize::Large, cx, 92, t.title, "KXLaunch");
 
         char ver[80];
         snprintf(ver, sizeof(ver), "%s v%s", T("Version"), SL_VERSION);
@@ -909,7 +909,7 @@ namespace sl::menu::ui {
                      m_check_updates ? T("up to date") : T("update check off"));
             m_gfx->TextCentered(FontSize::Small, cx, 158, t.dim, line);
         }
-        m_gfx->TextCentered(FontSize::Small, cx, 190, t.dim, "github.com/Kvinkxerli/kxlaunch--slaunch-");
+        m_gfx->TextCentered(FontSize::Small, cx, 190, t.dim, "github.com/Kvinkxerli/KXLaunch  ·  t.me/kvinkxerli");
 
         // "What's new" changelog (scrollable).
         const int lx = cx - 360;

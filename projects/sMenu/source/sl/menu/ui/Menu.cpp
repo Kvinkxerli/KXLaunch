@@ -1640,7 +1640,7 @@ namespace sl::menu::ui {
     void Menu::UpdateCheckTrampoline(void *self) {
         Menu *m = static_cast<Menu *>(self);
         std::string body;
-        if (net::Get("https://api.github.com/repos/Kvinkxerli/kxlaunch--slaunch-/releases/latest",
+        if (net::Get("https://api.github.com/repos/Kvinkxerli/KXLaunch/releases/latest",
                      body, 15)) {
             std::string tag = JsonStr(body, "tag_name");
             if (!tag.empty() && CmpVer(tag.c_str(), SL_VERSION) > 0) {

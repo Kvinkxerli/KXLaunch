@@ -652,6 +652,16 @@ namespace sl::menu::ui {
         struct LogLine { bool head; const char *text; };
         // Newest first. Headers are version tags; the rest are one-line summaries.
         inline const LogLine kChangelog[] = {
+            { true,  "v1.5.0 (KXLaunch)" },
+            { false, "Phone Music Upload: QR-code + mobile web uploader for MP3/FLAC/OGG/WAV" },
+            { false, "Offline User Profile selector before game launch (no account linking prompt)" },
+            { false, "Album: human-friendly game titles, localized capture date/time, system video playback" },
+            { false, "Restored rich UI audio effects for navigation and selection" },
+            { false, "Instant focus on Close Game on X with running game indicators across all layouts" },
+            { false, "Gamepad fling takeover: seamlessly take over kinetic touch scroll with D-pad / sticks" },
+            { false, "Clean rounded capsule cards, pill badges, and refined visual styling" },
+            { false, "Removed deprecated browser and widgets for maximum stability and speed" },
+            { false, "KXLaunch project maintainer: Kvinkxerli (t.me/kvinkxerli)" },
             { true,  "v1.4.1" },
             { false, "Much better loading speed for Flow and the other modes" },
             { false, "Fixed homebrew launching and logging (SD card file access)" },

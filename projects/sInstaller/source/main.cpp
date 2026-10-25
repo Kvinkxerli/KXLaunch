@@ -994,7 +994,7 @@ int main() {
         // ---- online update ----
         if (screen == Screen::Checking) {
             std::string body;
-            if (!HttpGet("https://api.github.com/repos/Kvinkxerli/kxlaunch--slaunch-/releases/latest", body)) {
+            if (!HttpGet("https://api.github.com/repos/Kvinkxerli/KXLaunch/releases/latest", body)) {
                 updErr = "Could not reach GitHub (no internet?)";
                 screen = Screen::Failed;
             } else {

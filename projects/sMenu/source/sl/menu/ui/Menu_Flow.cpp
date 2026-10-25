@@ -664,6 +664,7 @@ namespace sl::menu::ui {
             // prints screenshots was only ever a stand-in for having none. A
             // title Steam has never heard of now gets a plain back rather than
             // a misleading one.
+            (void)shots;
         } while (false);
 
         m->m_cover_state.store((int)end, std::memory_order_release);
