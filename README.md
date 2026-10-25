@@ -16,10 +16,10 @@
 ---
 
 <p align="center">
-  <img width="100%" alt="KXLaunch Preview Line" src="https://github.com/user-attachments/assets/fc5fcfc0-1348-454c-a057-2459c590818a" />
+  <img width="100%" alt="KXLaunch Preview Line" src="https://i.imgur.com/7PDwISY.jpeg" />
 </p>
 <p align="center">
-  <img width="100%" alt="KXLaunch Preview Flow" src="https://github.com/user-attachments/assets/25b4fedb-23fb-4c87-9cf6-0260a3c94ac2" />
+  <img width="100%" alt="KXLaunch Preview Flow" src="https://i.imgur.com/3VnEwgo.jpeg" />
 </p>
 
 ---
