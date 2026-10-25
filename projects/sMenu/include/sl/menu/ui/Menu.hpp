@@ -235,7 +235,7 @@ namespace sl::menu::ui {
                             // Deck: its side menu, the full-library grid, and the
                             // reader a news card opens into.
                             DeckMenu, DeckLibrary, DeckNews,
-                            UserSelect };
+                            UserSelect, MusicUpload };
         enum class Dialog { None, ConfirmCloseForLaunch, ConfirmCloseGame, ConfirmPower,
                             ConfirmRetroArch, ConfirmDelete,
                             CrashReport };   // a notice: one OK, no choice
@@ -480,8 +480,16 @@ namespace sl::menu::ui {
         // returns false if it cannot be opened; StopAlbumVideo restores the
         // music to whatever state it was in before the clip started.
         bool   PlayAlbumVideo(const std::string &path);
-        void   PreviewAlbumVideo(const std::string &path);   // silent, in the list panel
+        void   PreviewAlbumVideo(const std::string &path);
         void   StopAlbumVideo();
+        struct AlbumEntry {
+            std::string path;
+            std::string title;
+            std::string date_str;
+            bool is_video = false;
+        };
+        std::vector<AlbumEntry> m_album_entries;
+        int NextAlbumPhoto(int from, int dir);
         std::vector<std::string> m_album; // screenshot paths, newest last
         int          m_album_cursor  = 0;
         // Animated position of the list, chasing m_album_cursor. Wrapping from
@@ -1312,6 +1320,10 @@ namespace sl::menu::ui {
         bool  m_from_theming_music = false;   // B goes back to Theming, not home
         void  OpenMusicPlayer(bool from_theming);
         void  OnTouchMusic(int x, int y);
+        void  OpenMusicUpload();
+        Action OnButtonMusicUpload(Btn b);
+        void  DrawMusicUpload();
+        void  OnTouchMusicUpload(int x, int y);
         void  OnTouchAlbum(int x, int y);
         static std::string FormatTime(double seconds);   // m:ss / h:mm:ss
         // Cover of the current track (audio::Music::CoverArt), decoded once per

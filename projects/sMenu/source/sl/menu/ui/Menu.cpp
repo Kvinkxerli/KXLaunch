@@ -1029,6 +1029,7 @@ namespace sl::menu::ui {
             case Screen::Power:         a = OnButtonPower(b);         break;
             case Screen::Payloads:      a = OnButtonPayloads(b);      break;
             case Screen::UserSelect:    a = OnButtonUserSelect(b, out_app_id); break;
+            case Screen::MusicUpload:   a = OnButtonMusicUpload(b);   break;
         }
 
         PlayButtonSfx(b, a);
@@ -2487,6 +2488,7 @@ namespace sl::menu::ui {
             case Screen::Power:       DrawPower(); break;
             case Screen::Payloads:    DrawPayloads(); break;
             case Screen::UserSelect:  DrawUserSelect(); break;
+            case Screen::MusicUpload: DrawMusicUpload(); break;
         }
         // Touch-only "go back", on every screen a button-B would leave from.
         // Under the options overlay and any dialog on purpose - both already

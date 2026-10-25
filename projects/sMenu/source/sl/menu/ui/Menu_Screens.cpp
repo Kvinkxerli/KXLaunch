@@ -3,6 +3,8 @@
 #include <sl/menu/ui/Locale.hpp>
 #include <sl/menu/net/Http.hpp>
 #include <sl/menu/net/ContentFilter.hpp>
+#include <sl/menu/net/MusicServer.hpp>
+#include <sl/menu/net/qrcodegen.h>
 #include <sl/smi/Protocol.hpp>
 #include <sl/menu/smi/Commands.hpp>
 #include <SDL2/SDL_image.h>
@@ -1991,13 +1993,23 @@ namespace sl::menu::ui {
             m_from_theming_music = false;
             return Action::None;
         }
+        if (b == Btn::Y) {
+            OpenMusicUpload();
+            return Action::None;
+        }
+        if (n == 0) {
+            if (b == Btn::A || b == Btn::X) {
+                OpenMusicUpload();
+                return Action::None;
+            }
+            return Action::None;
+        }
         if (n > 0) {
             if (b == Btn::Down) m_music_cursor = (m_music_cursor + 1) % n;
             if (b == Btn::Up)   m_music_cursor = (m_music_cursor + n - 1) % n;
         }
         switch (b) {
             case Btn::A:
-                if (n == 0) break;
                 if (m_music_cursor == m_music.TrackIndex())
                     m_music.SetEnabled(!m_music.Enabled());   // play / pause
                 else {
@@ -2010,7 +2022,6 @@ namespace sl::menu::ui {
             case Btn::L:     m_music.Prev(); m_music_cursor = m_music.TrackIndex(); break;
             case Btn::R:     m_music.Next(); m_music_cursor = m_music.TrackIndex(); break;
             case Btn::X:     m_music.CycleRepeat(); break;
-            case Btn::Y:     m_music.ToggleShuffle(); break;
             case Btn::Plus:  m_music.SetVolume(m_music.Volume() + 5); break;
             case Btn::Minus: m_music.SetVolume(m_music.Volume() - 5); break;
             default: break;
@@ -2049,10 +2060,12 @@ namespace sl::menu::ui {
 
         const int n = m_music.TrackCount();
         if (n == 0) {
-            m_gfx->TextCentered(FontSize::Normal, W / 2, 300, t.dim, T("No music found"));
-            m_gfx->TextCentered(FontSize::Small, W / 2, 340, t.dim,
+            m_gfx->TextCentered(FontSize::Normal, W / 2, 280, t.dim, T("No music found"));
+            m_gfx->TextCentered(FontSize::Small, W / 2, 320, t.dim,
                                 T("Put mp3/ogg files in sdmc:/slaunch/music"));
-            DrawHint({ {{"b"}, "Back"} });
+            m_gfx->TextCentered(FontSize::Normal, W / 2, 380, t.accent,
+                                T("Press Y or A to upload music from phone"));
+            DrawHint({ {{"a","y"}, "Upload music from phone"}, {{"b"}, "Back"} });
             return;
         }
         const int cur = m_music.TrackIndex();
@@ -2133,13 +2146,17 @@ namespace sl::menu::ui {
 
         DrawHint({ {{"a"}, m_music_cursor == cur && m_music.Enabled() ? "Pause" : "Play"},
                    {{"left","right"}, "Seek"}, {{"l","r"}, "Track"},
-                   {{"x"}, "Repeat"}, {{"y"}, "Shuffle"}, {{"minus","plus"}, "Volume"},
+                   {{"y"}, "Upload from phone (QR)"},
+                   {{"x"}, "Repeat"}, {{"minus","plus"}, "Volume"},
                    {{"b"}, "Back"} });
     }
     // Touch: a track row plays it, the bar seeks, the cover plays / pauses.
     void Menu::OnTouchMusic(int x, int y) {
         const int n = m_music.TrackCount();
-        if (n == 0) return;
+        if (n == 0) {
+            OpenMusicUpload();
+            return;
+        }
         const int W = gfx::Gfx::Width;
         if (y >= kMuBarY - 20 && y <= kMuBarY + 26 && x >= kMuArtX && x <= W - 80) {
             const double dur = m_music.Duration(m_music.TrackIndex());
@@ -2156,6 +2173,152 @@ namespace sl::menu::ui {
             m_music_cursor = i;
             OnButtonMusic(Btn::A);
         }
+    }
+
+    // ---- Music Upload (QR code & Web Server) --------------------------------
+    void Menu::OpenMusicUpload() {
+        m_screen = Screen::MusicUpload;
+        net::MusicServer::Instance().ResetSession();
+    }
+
+    Menu::Action Menu::OnButtonMusicUpload(Btn b) {
+        if (b == Btn::B) {
+            net::MusicServer::Instance().Stop();
+            m_music.Rescan();
+            m_screen = Screen::Music;
+            m_music_cursor = m_music.TrackIndex();
+            const int n = m_music.TrackCount();
+            m_music_scroll = (float)std::clamp(m_music_cursor - kMuRows / 2, 0, std::max(0, n - kMuRows));
+            return Action::None;
+        }
+        return Action::None;
+    }
+
+    void Menu::OnTouchMusicUpload(int x, int y) {
+        if (y > gfx::Gfx::Height - 80 || (x < 100 && y < 80)) {
+            OnButtonMusicUpload(Btn::B);
+        }
+    }
+
+    void Menu::DrawMusicUpload() {
+        const Theme &t = m_theme.Current();
+        const int W = gfx::Gfx::Width;
+        const int H = gfx::Gfx::Height;
+
+        DrawTopBar("Upload music from phone");
+
+        u32 ip = 0;
+        nifmGetCurrentIpAddress(&ip);
+
+        if (ip == 0) {
+            m_gfx->TextCentered(FontSize::Normal, W / 2, H / 2 - 40, t.title,
+                                T("No Wi-Fi Connection"));
+            m_gfx->TextCentered(FontSize::Small, W / 2, H / 2, t.dim,
+                                T("Connect your Nintendo Switch to Wi-Fi in System Settings"));
+            DrawHint({ {{"b"}, "Back"} });
+            return;
+        }
+
+        char ip_str[32];
+        snprintf(ip_str, sizeof(ip_str), "%u.%u.%u.%u",
+                 (unsigned)( ip        & 0xFF), (unsigned)((ip >>  8) & 0xFF),
+                 (unsigned)((ip >> 16) & 0xFF), (unsigned)((ip >> 24) & 0xFF));
+
+        // Start server if not running
+        net::MusicServer::Instance().Start(8080);
+
+        char url[96];
+        snprintf(url, sizeof(url), "http://%s:%u", ip_str, net::MusicServer::Instance().Port());
+
+        // Generate QR code
+        uint8_t qrcode[qrcodegen_BUFFER_LEN_FOR_VERSION(7)];
+        uint8_t tempBuffer[qrcodegen_BUFFER_LEN_FOR_VERSION(7)];
+        bool ok = qrcodegen_encodeText(url, tempBuffer, qrcode, qrcodegen_Ecc_MEDIUM,
+                                       qrcodegen_VERSION_MIN, 7, qrcodegen_Mask_AUTO, true);
+
+        // Layout: QR code card on the left, info and steps on the right
+        const int qr_mod_size = ok ? qrcodegen_getSize(qrcode) : 25;
+        const int scale = 7;
+        const int qr_pixel_size = qr_mod_size * scale;
+        const int pad = 16;
+        const int box_size = qr_pixel_size + pad * 2;
+
+        const int qx = 100;
+        const int qy = 150;
+
+        // Draw white rounded card for QR code
+        gfx::Gfx::CardStyle qcs;
+        qcs.radius = 16.0f;
+        qcs.shadow = 12.0f;
+        qcs.fill = SDL_Color{ 255, 255, 255, 255 };
+        if (!m_gfx->Card(nullptr, (float)qx, (float)qy, (float)box_size, (float)box_size, qcs))
+            m_gfx->FillRect(qx, qy, box_size, box_size, SDL_Color{ 255, 255, 255, 255 });
+
+        if (ok) {
+            for (int y = 0; y < qr_mod_size; y++) {
+                for (int x = 0; x < qr_mod_size; x++) {
+                    if (qrcodegen_getModule(qrcode, x, y)) {
+                        m_gfx->FillRect(qx + pad + x * scale, qy + pad + y * scale,
+                                        scale, scale, SDL_Color{ 0, 0, 0, 255 });
+                    }
+                }
+            }
+        }
+
+        // Right side information card
+        const int rx = qx + box_size + 44;
+        const int rw = W - rx - 80;
+        const int ry = qy;
+        const int rh = box_size;
+
+        gfx::Gfx::CardStyle rcs;
+        rcs.radius = 16.0f;
+        rcs.shadow = 8.0f;
+        rcs.fill = WithAlpha(t.bg_bottom, 220);
+        if (!m_gfx->Card(nullptr, (float)rx, (float)ry, (float)rw, (float)rh, rcs))
+            m_gfx->FillRect(rx, ry, rw, rh, WithAlpha(t.bg_bottom, 220));
+
+        int ty = ry + 24;
+        m_gfx->Text(FontSize::Normal, rx + 24, ty, t.title, T("Scan QR code with your phone camera"));
+        ty += m_gfx->LineHeight(FontSize::Normal) + 8;
+
+        // URL badge
+        const int uw = m_gfx->TextWidth(FontSize::Normal, url) + 24;
+        gfx::Gfx::CardStyle ucs;
+        ucs.radius = 10.0f;
+        ucs.shadow = 0.0f;
+        ucs.fill = WithAlpha(t.accent, 40);
+        if (!m_gfx->Card(nullptr, (float)(rx + 24), (float)ty, (float)uw, 36.0f, ucs))
+            m_gfx->FillRect(rx + 24, ty, uw, 36, WithAlpha(t.accent, 40));
+        m_gfx->Text(FontSize::Normal, rx + 36, ty + 6, t.accent, url);
+        ty += 52;
+
+        // Steps
+        m_gfx->Text(FontSize::Small, rx + 24, ty, t.fg, T("1. Open Camera app on iPhone or Android"));
+        ty += 26;
+        m_gfx->Text(FontSize::Small, rx + 24, ty, t.fg, T("2. Tap the link to open the web uploader"));
+        ty += 26;
+        m_gfx->Text(FontSize::Small, rx + 24, ty, t.fg, T("3. Select MP3, FLAC, OGG, WAV files to upload"));
+        ty += 34;
+
+        // Live upload counter
+        const int count = net::MusicServer::Instance().UploadCount();
+        char count_str[128];
+        snprintf(count_str, sizeof(count_str), "%s: %d", T("Tracks uploaded this session"), count);
+        m_gfx->Text(FontSize::Small, rx + 24, ty, count > 0 ? t.accent : t.dim, count_str);
+
+        std::string last_file = net::MusicServer::Instance().LastUploadedFile();
+        if (!last_file.empty()) {
+            std::string file_info = std::string("✔ ") + last_file;
+            m_gfx->Text(FontSize::Small, rx + 24, ty + 24, t.accent, file_info.c_str());
+        }
+
+        // FTP fallback notice for advanced users
+        char ftp_str[128];
+        snprintf(ftp_str, sizeof(ftp_str), "FTP: ftp://%s:5000 -> /slaunch/music", ip_str);
+        m_gfx->Text(FontSize::Small, rx + 24, ry + rh - 30, WithAlpha(t.dim, 140), ftp_str);
+
+        DrawHint({ {{"b"}, "Done / Back"} });
     }
     // ---- Homebrew (.nro) browser -------------------------------------------
     void Menu::LoadHbPins() {
@@ -2389,6 +2552,89 @@ namespace sl::menu::ui {
             if (cmp != 0) return cmp > 0;
             return a > b;
         });
+
+        m_album_entries.clear();
+        m_album_entries.reserve(m_album.size());
+
+        for (const auto &p : m_album) {
+            AlbumEntry entry;
+            entry.path = p;
+            entry.is_video = IsVideoPath(p.c_str());
+
+            size_t slash = p.find_last_of('/');
+            std::string filename = (slash == std::string::npos) ? p : p.substr(slash + 1);
+
+            size_t dash = filename.find('-');
+            std::string ts = (dash != std::string::npos) ? filename.substr(0, dash) : "";
+            std::string tid_str = "";
+            if (dash != std::string::npos && dash + 1 < filename.size()) {
+                size_t dot = filename.find('.', dash + 1);
+                tid_str = (dot != std::string::npos) ? filename.substr(dash + 1, dot - dash - 1) : filename.substr(dash + 1);
+            }
+
+            // 1. Resolve Title
+            if (!tid_str.empty()) {
+                char *end = nullptr;
+                u64 tid = std::strtoull(tid_str.c_str(), &end, 16);
+                if (tid != 0 && end != tid_str.c_str()) {
+                    if (tid == 0x0100000000001000ULL) {
+                        entry.title = T("HOME Menu");
+                    } else if (tid == 0x0100000000001007ULL) {
+                        entry.title = T("Album");
+                    } else if (tid == 0x0100000000001008ULL) {
+                        entry.title = T("System Settings");
+                    } else {
+                        for (const auto &it : m_items) {
+                            if (it.app_id == tid && !it.name.empty()) {
+                                entry.title = it.name;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (entry.title.empty()) {
+                entry.title = entry.is_video ? T("Video clip") : T("Screenshot");
+            }
+
+            // 2. Format Date
+            if (ts.size() >= 12 && ts.find_first_not_of("0123456789") >= 12) {
+                int yr = std::atoi(ts.substr(0, 4).c_str());
+                int mo = std::atoi(ts.substr(4, 2).c_str());
+                int dy = std::atoi(ts.substr(6, 2).c_str());
+                int hr = std::atoi(ts.substr(8, 2).c_str());
+                int mn = std::atoi(ts.substr(10, 2).c_str());
+
+                static const char *kMonths[] = {
+                    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                };
+
+                const char *mname = (mo >= 1 && mo <= 12) ? T(kMonths[mo]) : "";
+
+                char buf[64];
+                if (mname[0]) {
+                    snprintf(buf, sizeof(buf), "%d %s %04d, %02d:%02d", dy, mname, yr, hr, mn);
+                } else {
+                    snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d", yr, mo, dy, hr, mn);
+                }
+                entry.date_str = buf;
+            } else {
+                entry.date_str = ts;
+            }
+
+            m_album_entries.push_back(std::move(entry));
+        }
+    }
+
+    int Menu::NextAlbumPhoto(int from, int dir) {
+        const int n = (int)m_album_entries.size();
+        if (n <= 1) return from;
+        for (int step = 1; step < n; step++) {
+            int idx = (from + step * dir + n * 100) % n;
+            if (!m_album_entries[idx].is_video) return idx;
+        }
+        return from;
     }
     void Menu::FreeAlbumTexture() {
         if (m_album_tex) m_gfx->FreeImage(m_album_tex);
@@ -2476,12 +2722,7 @@ namespace sl::menu::ui {
         m_album_cursor = (i % n + n) % n;
         m_album_scroll = (float)m_album_cursor;
         m_album_slide_tick = armGetSystemTick();
-        const std::string &p = m_album[m_album_cursor];
-        if (IsVideoPath(p.c_str())) {
-            if (!PlayAlbumVideo(p)) SetStatus(T("Could not play that clip"));
-        } else {
-            StopAlbumVideo();
-        }
+        StopAlbumVideo();
         m_album_full = true;
         AlbumPokeUi();
     }
@@ -2503,15 +2744,15 @@ namespace sl::menu::ui {
                 case Btn::Y:
                     StopAlbumVideo(); FreeAlbumTexture();
                     return Action::OpenAlbum;
-                case Btn::L: AlbumShow(m_album_cursor - 1); return Action::None;
-                case Btn::R: AlbumShow(m_album_cursor + 1); return Action::None;
+                case Btn::L: AlbumShow(NextAlbumPhoto(m_album_cursor, -1)); return Action::None;
+                case Btn::R: AlbumShow(NextAlbumPhoto(m_album_cursor, 1)); return Action::None;
                 case Btn::Left:
                     if (clip) m_album_video.Seek(m_album_video.Position() - 5.0);
-                    else      AlbumShow(m_album_cursor - 1);
+                    else      AlbumShow(NextAlbumPhoto(m_album_cursor, -1));
                     return Action::None;
                 case Btn::Right:
                     if (clip) m_album_video.Seek(m_album_video.Position() + 5.0);
-                    else      AlbumShow(m_album_cursor + 1);
+                    else      AlbumShow(NextAlbumPhoto(m_album_cursor, 1));
                     return Action::None;
                 case Btn::A:
                     if (clip && m_album_video.Ended()) {        // play it again
@@ -2526,7 +2767,7 @@ namespace sl::menu::ui {
                 case Btn::X:
                     m_album_slideshow = !m_album_slideshow;
                     m_album_slide_tick = armGetSystemTick();
-                    SetStatus(m_album_slideshow ? "Slideshow on" : "Slideshow off");
+                    SetStatus(m_album_slideshow ? T("Slideshow on") : T("Slideshow off"));
                     return Action::None;
                 default: return Action::None;
             }
@@ -2548,10 +2789,22 @@ namespace sl::menu::ui {
         const int was = m_album_cursor;
         if (b == Btn::Down || b == Btn::Right) m_album_cursor = (m_album_cursor + 1) % n;
         if (b == Btn::Up   || b == Btn::Left)  m_album_cursor = (m_album_cursor + n - 1) % n;
-        if (b == Btn::A) { AlbumShow(m_album_cursor); return Action::None; }
+        if (b == Btn::A) {
+            if (m_album_cursor >= 0 && m_album_cursor < (int)m_album_entries.size() &&
+                m_album_entries[m_album_cursor].is_video) {
+                StopAlbumVideo();
+                FreeAlbumTexture();
+                return Action::OpenAlbum;
+            }
+            AlbumShow(m_album_cursor);
+            return Action::None;
+        }
         if (b == Btn::X) {                      // slideshow from the selection
             m_album_slideshow = true;
-            AlbumShow(m_album_cursor);
+            int start_idx = m_album_cursor;
+            if (start_idx >= 0 && start_idx < (int)m_album_entries.size() && m_album_entries[start_idx].is_video)
+                start_idx = NextAlbumPhoto(start_idx, 1);
+            AlbumShow(start_idx);
             return Action::None;
         }
 
@@ -2563,37 +2816,29 @@ namespace sl::menu::ui {
         return Action::None;
     }
 
-    // "2026092312000000-ABCDEF.jpg" -> "2026-09-23  12:00:00". The console
-    // names every capture by its timestamp, so this is the capture's date.
-    static std::string CaptureDate(const std::string &path) {
-        const size_t slash = path.find_last_of('/');
-        const std::string f = (slash == std::string::npos) ? path : path.substr(slash + 1);
-        if (f.size() < 14 || f.find_first_not_of("0123456789") < 14) return f;
-        return f.substr(0, 4) + "-" + f.substr(4, 2) + "-" + f.substr(6, 2) + "  " +
-               f.substr(8, 2) + ":" + f.substr(10, 2) + ":" + f.substr(12, 2);
-    }
-
-    // The viewer's info bar: date and position, and for a clip the transport.
-    // It fades in on any input and out a few seconds later, and stays while a
-    // clip is paused or a photo has it pinned.
+    // The viewer's info bar: Title, date and position.
+    // It fades in on any input and out a few seconds later, and stays while pinned.
     void Menu::DrawAlbumViewerUi() {
         const Theme &t = m_theme.Current();
         const int W = gfx::Gfx::Width, H = gfx::Gfx::Height;
-        const bool clip = m_album_video_active;
         const u64 ms = (armGetSystemTick() - m_album_ui_tick) * 1000 / armGetSystemTickFreq();
-        const bool held = clip ? (m_album_video.Paused() || m_album_video.Ended()) : m_album_ui_pinned;
+        const bool held = m_album_ui_pinned;
         float vis = held ? 1.0f : (ms < 2500 ? 1.0f : std::max(0.0f, 1.0f - (ms - 2500) / 400.0f));
         if (vis <= 0.0f) return;
         const Uint8 a = (Uint8)(255 * vis);
 
-        // Tall enough that its rows sit above the hint bar and the touch
-        // Back button, which share the bottom edge with it.
-        const int band = clip ? 160 : 120;
-        m_gfx->FillRect(0, H - band, W, band, SDL_Color{ 0, 0, 0, (Uint8)(160 * vis) });
-        const int lh = m_gfx->LineHeight(FontSize::Small);
-        const int y0 = H - band + 14;
-        m_gfx->Text(FontSize::Small, 40, y0, WithAlpha(t.fg, a),
-                    CaptureDate(m_album[m_album_cursor]).c_str());
+        const int band = 130;
+        m_gfx->FillRect(0, H - band, W, band, SDL_Color{ 0, 0, 0, (Uint8)(170 * vis) });
+        const int y0 = H - band + 18;
+
+        std::string title_str = (m_album_cursor >= 0 && m_album_cursor < (int)m_album_entries.size()) ?
+                                m_album_entries[m_album_cursor].title : T("Screenshot");
+        std::string date_str = (m_album_cursor >= 0 && m_album_cursor < (int)m_album_entries.size()) ?
+                               m_album_entries[m_album_cursor].date_str : "";
+
+        m_gfx->Text(FontSize::Normal, 40, y0, WithAlpha(t.title, a), title_str.c_str());
+        m_gfx->Text(FontSize::Small, 40, y0 + m_gfx->LineHeight(FontSize::Normal) + 4, WithAlpha(t.dim, a), date_str.c_str());
+
         char pos[32];
         snprintf(pos, sizeof(pos), "%d / %d", m_album_cursor + 1, (int)m_album.size());
         std::string right = pos;
@@ -2601,52 +2846,28 @@ namespace sl::menu::ui {
         m_gfx->Text(FontSize::Small, W - 40 - m_gfx->TextWidth(FontSize::Small, right.c_str()), y0,
                     WithAlpha(t.dim, a), right.c_str());
 
-        if (clip) {
-            const double dur = m_album_video.Duration(), p = m_album_video.Position();
-            const int bx = 40, bw = W - 80, by = y0 + lh + 14;
-            m_gfx->FillRect(bx, by, bw, 6, SDL_Color{ 255, 255, 255, (Uint8)(60 * vis) });
-            if (dur > 0.0) m_gfx->FillRect(bx, by, (int)(bw * std::min(1.0, p / dur)), 6, WithAlpha(t.accent, a));
-            const std::string tm = FormatTime(p) + " / " + FormatTime(dur);
-            m_gfx->Text(FontSize::Small, bx + 30, by + 12, WithAlpha(t.fg, a), tm.c_str());
-            const int cx = bx + 8, cy = by + 12 + lh / 2;
-            if (m_album_video.Paused() || m_album_video.Ended())
-                m_gfx->FillTriangle(cx, cy - 8, cx + 14, cy, cx, cy + 8, WithAlpha(t.fg, a));
-            else {
-                m_gfx->FillRect(cx, cy - 8, 5, 16, WithAlpha(t.fg, a));
-                m_gfx->FillRect(cx + 9, cy - 8, 5, 16, WithAlpha(t.fg, a));
-            }
-            DrawStatusHint({ {{"a"}, m_album_video.Paused() || m_album_video.Ended() ? "Play" : "Pause"},
-                             {{"left","right"}, "Seek"}, {{"l","r"}, "Previous / next"},
-                             {{"x"}, "Slideshow"}, {{"b"}, "Back"} });
-        } else {
-            DrawStatusHint({ {{"left","right"}, "Previous / next"}, {{"a"}, "Info"},
-                             {{"x"}, "Slideshow"}, {{"b"}, "Back"}, {{"y"}, "System album"} });
-        }
+        DrawStatusHint({ {{"left","right"}, "Previous / next"}, {{"a"}, "Info"},
+                         {{"x"}, "Slideshow"}, {{"b"}, "Back"}, {{"y"}, "System album"} });
     }
 
     // Browser: the list of captures on the left, a preview of the selected one
     // on the right, in the same left-anchored arrangement as the rest of XMB.
-    // A opens the full screen viewer.
+    // A opens the full screen viewer (or official album for clips).
     void Menu::DrawAlbum() {
         const Theme &t = m_theme.Current();
         const int     W = gfx::Gfx::Width;
         const int     H = gfx::Gfx::Height;
 
         if (m_album_full && !m_album.empty()) {
-            // Slideshow: photos hold for a few seconds, clips play out.
+            // Slideshow: photos hold for a few seconds.
             if (m_album_slideshow) {
                 const u64 ms = (armGetSystemTick() - m_album_slide_tick) * 1000 / armGetSystemTickFreq();
-                if (m_album_video_active ? m_album_video.Ended() : ms >= 4000)
-                    AlbumShow(m_album_cursor + 1);
+                if (ms >= 4000)
+                    AlbumShow(NextAlbumPhoto(m_album_cursor, 1));
             }
             m_gfx->FillRect(0, 0, W, H, SDL_Color{ 0, 0, 0, 255 });
-            if (m_album_video_active) {
-                m_album_video.Tick();
-                if (SDL_Texture *vt = m_album_video.GetTexture()) m_gfx->DrawCover(vt, 255);
-            } else {
-                EnsureAlbumTexture();
-                if (m_album_tex) m_gfx->DrawCover(m_album_tex, 255);
-            }
+            EnsureAlbumTexture();
+            if (m_album_tex) m_gfx->DrawCover(m_album_tex, 255);
             DrawAlbumViewerUi();
             return;
         }
@@ -2655,7 +2876,7 @@ namespace sl::menu::ui {
 
         DrawTopBar("Album");
 
-        if (m_album.empty()) {
+        if (m_album_entries.empty()) {
             m_gfx->TextCentered(FontSize::Normal, W / 2, H / 2 - 20, t.dim,
                                 T("No screenshots or clips found"));
             DrawStatusHint({ {{"b"}, "Back"}, {{"y"}, "System album"} });
@@ -2673,110 +2894,131 @@ namespace sl::menu::ui {
         const int ph = pw * 9 / 16;
         const int px = W - pw - 40;
         const int py = (H - ph) / 2;
-        m_gfx->FillRect(px - 2, py - 2, pw + 4, ph + 4, WithAlpha(t.dim, 60));
+        gfx::Gfx::CardStyle pcs;
+        pcs.radius = 14.0f;
+        pcs.shadow = 8.0f;
+        pcs.fill = WithAlpha(t.bg_bottom, 220);
+        if (!m_gfx->Card(nullptr, (float)px, (float)py, (float)pw, (float)ph, pcs))
+            m_gfx->FillRect(px, py, pw, ph, WithAlpha(t.bg_bottom, 220));
 
-        // A clip previews live, silently, once the list has come to rest on it
-        // - opening a decoder for every row scrolled past would stall the list.
-        const bool clip = IsVideoPath(m_album[m_album_cursor].c_str());
-        if (!clip)                                           StopAlbumVideo();
-        else if (m_album_scroll == (float)m_album_cursor)    PreviewAlbumVideo(m_album[m_album_cursor]);
-        SDL_Texture *pv = m_album_tex;
-        if (clip && m_album_video_path == m_album[m_album_cursor]) {
-            m_album_video.Tick();
-            pv = m_album_video.GetTexture();
-        }
-        if (pv) m_gfx->DrawImage(pv, px, py, pw, ph, 255);
-        else    m_gfx->FillRect(px, py, pw, ph, WithAlpha(t.bg_bottom, 200));
-        if (clip) {   // play badge, so a clip reads as one even before it decodes
-            const int cx = px + pw / 2, cy = py + ph / 2, s = 22;
-            m_gfx->FillRect(cx - s - 12, cy - s - 8, 2 * s + 24, 2 * s + 16,
-                            SDL_Color{ 0, 0, 0, 110 });
-            m_gfx->FillTriangle(cx - s / 2, cy - s, cx + s, cy, cx - s / 2, cy + s,
-                                WithAlpha(t.title, 220));
+        const bool is_vid = (m_album_cursor >= 0 && m_album_cursor < (int)m_album_entries.size() &&
+                             m_album_entries[m_album_cursor].is_video);
+
+        if (is_vid) {
+            // Sleek video player card
+            const int cx = px + pw / 2;
+            const int cy = py + ph / 2 - 24;
+
+            // Glowing circular play button
+            gfx::Gfx::CardStyle bcs;
+            bcs.radius = 32.0f;
+            bcs.shadow = 10.0f;
+            bcs.fill = WithAlpha(t.accent, 55);
+            if (!m_gfx->Card(nullptr, (float)(cx - 32), (float)(cy - 32), 64.0f, 64.0f, bcs))
+                m_gfx->FillRect(cx - 32, cy - 32, 64, 64, WithAlpha(t.accent, 55));
+            m_gfx->FillTriangle(cx - 9, cy - 16, cx + 16, cy, cx - 9, cy + 16, WithAlpha(t.accent, 255));
+
+            // Title and date
+            m_gfx->TextCentered(FontSize::Normal, cx, cy + 50, t.title,
+                                Ellipsize(m_album_entries[m_album_cursor].title, pw - 40, FontSize::Normal).c_str());
+            m_gfx->TextCentered(FontSize::Small, cx, cy + 78, t.dim,
+                                m_album_entries[m_album_cursor].date_str.c_str());
+
+            // Action prompt pill
+            const int pillW = 340, pillH = 34;
+            gfx::Gfx::CardStyle plcs;
+            plcs.radius = pillH / 2.0f;
+            plcs.shadow = 0.0f;
+            plcs.fill = WithAlpha(t.accent, 45);
+            if (!m_gfx->Card(nullptr, (float)(cx - pillW / 2), (float)(cy + 110), (float)pillW, (float)pillH, plcs))
+                m_gfx->FillRect(cx - pillW / 2, cy + 110, pillW, pillH, WithAlpha(t.accent, 45));
+            m_gfx->TextCentered(FontSize::Small, cx, cy + 118, t.accent,
+                                T("A: Воспроизвести в Альбоме Switch"));
+        } else {
+            if (m_album_tex) {
+                m_gfx->DrawImage(m_album_tex, px, py, pw, ph, 255);
+            }
         }
 
-        // The list, using the XMB placement curve so it matches every other
-        // screen while XMB is the active layout.
-        const int   rows   = 9;
-        const int   pitch  = 44;
+        // The list, using 7 rows and 60px pitch for clear, comfortable two-line layout.
+        const int   rows   = 7;
+        const int   pitch  = 60;
         const int   cy0    = H / 2 - (rows / 2) * pitch;
         const int   listX  = 56;
         const int   listW  = px - 40 - listX;
-        const int   n      = (int)m_album.size();
+        const int   n      = (int)m_album_entries.size();
 
-        // One extra row each way: at rest they sit off-screen, and during a
-        // scroll they are what slides in rather than popping into place.
         for (int off = -(rows / 2) - 1; off <= rows / 2 + 1; off++) {
             const int i = (int)lroundf(m_album_scroll) + off;
             if (i < 0 || i >= n) continue;
 
-            // Distance from the cursor in animated space, so brightness, size
-            // and position all move together instead of snapping on the frame
-            // the index changes.
             const float d   = (float)i - m_album_scroll;
             const bool  sel = (i == m_album_cursor);
             const int   y   = cy0 + (int)((d + rows / 2) * pitch);
             if (y < 60 || y > H - 60) continue;
-            const Uint8 a   = (Uint8)std::max(60.0f, 255.0f - std::abs(d) * 42.0f);
+            const Uint8 a   = (Uint8)std::max(50.0f, 255.0f - std::abs(d) * 45.0f);
 
-            // Show the capture's own file name, which is its timestamp.
-            const std::string &p = m_album[i];
-            const size_t slash   = p.find_last_of('/');
-            std::string  name    = (slash == std::string::npos) ? p : p.substr(slash + 1);
-            if (name.size() > 4) name.resize(name.size() - 4);   // drop ".jpg"/".mp4"
-
-            const FontSize fs = sel ? FontSize::Normal : FontSize::Small;
-            const int      lh = m_gfx->LineHeight(fs);
             if (sel) {
-                const int s = 9;
-                m_gfx->FillTriangle(listX - 22, y - s, listX - 13, y,
-                                    listX - 22, y + s, WithAlpha(t.accent, a));
+                // Rounded highlight card behind item
+                gfx::Gfx::CardStyle hlcs;
+                hlcs.radius = 12.0f;
+                hlcs.shadow = 0.0f;
+                hlcs.fill = WithAlpha(t.accent, 45);
+                if (!m_gfx->Card(nullptr, (float)(listX - 16), (float)(y - 2), (float)(listW + 32), (float)(pitch - 6), hlcs))
+                    m_gfx->FillRect(listX - 16, y - 2, listW + 32, pitch - 6, WithAlpha(t.accent, 45));
+
+                // Rounded pill pointer
+                gfx::Gfx::CardStyle ptcs;
+                ptcs.radius = 2.5f;
+                ptcs.shadow = 0.0f;
+                ptcs.fill = WithAlpha(t.accent, a);
+                if (!m_gfx->Card(nullptr, (float)(listX - 12), (float)(y + (pitch - 6) / 2 - 12), 5.0f, 24.0f, ptcs))
+                    m_gfx->FillRect(listX - 12, y + (pitch - 6) / 2 - 12, 5, 24, WithAlpha(t.accent, a));
             }
-            const bool        vid   = IsVideoPath(p.c_str());
-            const std::string shown = Ellipsize(name, listW - (vid ? 24 : 0), fs);
-            m_gfx->Text(fs, listX, y - lh / 2,
-                        WithAlpha(sel ? t.title : t.fg, a), shown.c_str());
-            if (vid) {   // small play mark after the name
-                const int mx = listX + m_gfx->TextWidth(fs, shown.c_str()) + 10;
-                m_gfx->FillTriangle(mx, y - 6, mx + 10, y, mx, y + 6, WithAlpha(t.accent, a));
-            }
+
+            const auto &entry = m_album_entries[i];
+
+            // Line 1: Title
+            m_gfx->Text(sel ? FontSize::Normal : FontSize::Small, listX + 4, y + 2,
+                        WithAlpha(sel ? t.title : t.fg, a),
+                        Ellipsize(entry.title, listW - 20, sel ? FontSize::Normal : FontSize::Small).c_str());
+
+            // Line 2: Date + Type badge
+            std::string sub = entry.date_str;
+            sub += entry.is_video ? (std::string("  ·  🎬 ") + T("Video clip")) : (std::string("  ·  📷 ") + T("Screenshot"));
+            m_gfx->Text(FontSize::Small, listX + 4, y + 30, WithAlpha(t.dim, a), sub.c_str());
         }
 
         char pos[32];
         snprintf(pos, sizeof(pos), "%d/%d", m_album_cursor + 1, n);
-        // Position counters are optional; blanking the string here keeps
-        // the layout arithmetic below untouched.
         if (!m_show_counter) pos[0] = '\0';
         const int pwid = m_gfx->TextWidth(FontSize::Small, pos);
         m_gfx->Text(FontSize::Small, W - 8 - pwid,
                     H - 8 - m_gfx->LineHeight(FontSize::Small), t.dim, pos);
 
-        DrawStatusHint({ {{"a"}, clip ? "Play" : "View"}, {{"x"}, "Slideshow"}, {{"b"}, "Back"},
+        DrawStatusHint({ {{"a"}, is_vid ? "Play in Switch Album" : "View"},
+                         {{"x"}, "Slideshow"}, {{"b"}, "Back"},
                          {{"y"}, "System album"} });
     }
-    // Touch. Viewer: the outer thirds step through the album, the middle
-    // plays / pauses (or shows the info), the bar seeks. List: a row opens.
+
     void Menu::OnTouchAlbum(int x, int y) {
         const int W = gfx::Gfx::Width, H = gfx::Gfx::Height;
         if (m_album.empty()) return;
         if (m_album_full) {
-            if (m_album_video_active && y > H - 125 && y < H - 90 && m_album_video.Duration() > 0.0) {
-                m_album_video.Seek(m_album_video.Duration() * std::max(0, x - 40) / (double)(W - 80));
-                AlbumPokeUi();
-            } else if (x < W / 3)      OnButtonAlbum(Btn::L);
-            else if (x > W * 2 / 3)    OnButtonAlbum(Btn::R);
-            else                       OnButtonAlbum(Btn::A);
+            if (x < W / 3)           OnButtonAlbum(Btn::L);
+            else if (x > W * 2 / 3)  OnButtonAlbum(Btn::R);
+            else                     OnButtonAlbum(Btn::A);
             return;
         }
-        const int pitch = 44, cy0 = H / 2 - 4 * pitch;     // DrawAlbum's list rows
+        const int pitch = 60, cy0 = H / 2 - 3 * pitch;
         if (x < (int)(W * 0.54f)) {
-            const int i = (int)lroundf(m_album_scroll) + (int)lroundf((float)(y - cy0) / pitch) - 4;
+            const int i = (int)lroundf(m_album_scroll) + (int)lroundf((float)(y - cy0) / pitch) - 3;
             if (i >= 0 && i < (int)m_album.size()) {
-                if (i == m_album_cursor) AlbumShow(i);
+                if (i == m_album_cursor) OnButtonAlbum(Btn::A);
                 else                     m_album_cursor = i;
             }
         } else {
-            AlbumShow(m_album_cursor);   // the preview opens the selection
+            OnButtonAlbum(Btn::A);
         }
     }
     Menu::Action Menu::OnButtonHomebrew(Btn b) {

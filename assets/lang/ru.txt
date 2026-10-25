@@ -590,3 +590,19 @@ Dec=дек
 
 # --- running game hints ---
 Press X to close=X: закрыть игру
+
+# --- Music & Album Upload ---
+Scan QR code with your phone camera=Наведите камеру телефона на QR-код
+Upload music from phone=Загрузка музыки с телефона
+Upload from phone (QR)=Загрузка с телефона (QR)
+Connect your Nintendo Switch to Wi-Fi in System Settings=Подключите Nintendo Switch к Wi-Fi в настройках
+No Wi-Fi Connection=Нет подключения к Wi-Fi
+1. Open Camera app on iPhone or Android=1. Откройте камеру на телефоне и наведите на QR-код
+2. Tap the link to open the web uploader=2. Перейдите по ссылке для загрузчика треков
+3. Select MP3, FLAC, OGG, WAV files to upload=3. Выберите музыку (MP3, FLAC, OGG, WAV)
+Tracks uploaded this session=Загружено треков в этой сессии
+Done / Back=Готово / Назад
+Play in Switch Album=Воспроизвести в Альбоме Switch
+Video clip=Видеозапись
+Screenshot=Снимок экрана
+Press Y or A to upload music from phone=Нажмите Y или A для загрузки музыки с телефона
