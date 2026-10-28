@@ -1,0 +1,581 @@
+# sLaunch locale template.
+#
+# English is built in and is always the fallback: any string missing here (or a
+# missing file entirely) simply renders in English. To translate the menu:
+#   1. Copy this file to  <code>.txt  where <code> is your language code, e.g.
+#      fr.txt, de.txt, es.txt, ja.txt, pt-BR.txt (region form is tried first,
+#      then the two-letter form).
+#   2. Put it in  sdmc:/slaunch/lang/  on the SD card.
+#   3. Replace the text on the RIGHT of each '=' with your translation. Leave the
+#      LEFT side (the English key) exactly as it is.
+# Lines starting with '#' and blank lines are ignored. The console's system
+# language selects which file is loaded.
+#
+# This file is generated from the menu sources; every string the menu can show
+# is listed. Button hints ("A: Select", "B: Back", ...) are drawn as real
+# button icons now, not text - what you're translating for those is just the
+# action word (e.g. "Select" on its own, under "button hint icons" below).
+#
+# Non-Latin scripts need a font that has those glyphs. The console's own font
+# covers Japanese, Chinese and Korean and the menu picks it up automatically
+# from the system language; for anything else, drop a TTF/OTF in
+# sdmc:/slaunch/fonts and choose it under Theming > Fonts.
+
+
+# --- main menu shortcuts ---
+Theming=Kişiselleştirme
+Random game=Rastgele oyun
+Controllers=Kontrolcüler
+Album=Albüm
+Media=Medya
+User Page=Kullanıcı profili
+Web Browser=İnternet tarayıcısı
+Mii Edit=Mii'yi düzenle
+Settings=Ayarlar
+Power=Güç seçenekleri
+Homebrew menu=Homebrew menüsü
+User=Kullanıcı
+Network=Ağ
+Games=Oyunlar
+Homebrew=Homebrew
+
+# --- entry options (X) ---
+Renamed=Adı değiştirildi
+Remove from Favourites=Favorilerden kaldır
+Add to Favourites=Favorilere ekle
+Rename=Yeniden adlandır
+Homebrew donor (set)=Homebrew kaynak uygulaması (ayarlandı)
+Use as homebrew donor=Homebrew için kaynak uygulama yap
+Remove from menu=Menüden kaldır
+Move=Taşı
+Choose cover=Kapak görseli seç
+Tile size: =Kutucuk boyutu: 
+Small=Küçük
+Wide=Geniş
+Large=Büyük
+Tile colour=Kutucuk rengi
+Anti-aliasing=Kenar yumuşatma
+Columns=Sütunlar
+Rows=Satırlar
+Wrap around=Sonda başa dön
+Button hints=Tuş ipuçları
+Position counter=Konum göstergesi
+Default colour=Varsayılan renk
+Remove tile=Kutucuğu kaldır
+Add widget=Widget ekle
+Widget added=Widget eklendi
+Playing=Oynanıyor
+Paused=Duraklatıldı
+Close game=Oyunu kapat
+Sort: =Sırala: 
+Cancel=İptal
+Move: D-pad to reorder, A to place=Taşı: Yön tuşlarıyla sırala, A ile yerleştir
+Rename theme=Temayı yeniden adlandır
+
+# --- sort modes ---
+Title A - Z=A'dan Z'ye
+Title Z - A=Z'den A'ya
+Game card first=Oyun kartındakiler önce
+Recently played=Son oynananlar
+Most played=En çok oynananlar
+Default=Varsayılan
+Default payload=Varsayılan payload
+
+# --- play time ---
+Today=Bugün
+Yesterday=Dün
+days ago=gün önce
+months ago=ay önce
+years ago=yıl önce
+
+# --- entry state ---
+Loading games...=Oyunlar yükleniyor...
+No apps found=Uygulama bulunamadı
+Game card=Kurulu: SD Kart
+Nintendo Switch=Kurulu: Sistem
+Running=Çalışıyor
+Update available=Güncelleme mevcut
+
+# --- theming + appearance ---
+Menu entries=Menü öğeleri
+Screen timeout=Ekran zaman aşımı
+Screen timeout (TV)=Ekran zaman aşımı (TV)
+Never=Hiçbir zaman
+min=dk
+h=sa
+found=bulundu
+Back=Geri
+About=Hakkında
+Applied=Uygulandı
+List=Liste
+Line=Satır
+Grid=Izgara
+Cover=Kapak
+Shelf=Raf
+XMB=XMB
+On=Açık
+Off=Kapalı
+Left=Sol
+Center=Orta
+Right=Sağ
+Themes=Temalar
+UI mode=Arayüz modu
+Text position=Metin konumu
+List icons=Liste simgeleri
+Icon pack=Simge paketi
+Fonts=Yazı tipleri
+Music=Müzik
+Widgets=Widget'lar
+Welcome screen=Karşılama ekranı
+Check for updates=Güncellemeleri denetle
+Built-in=Yerleşik
+current=etkin
+
+# --- power menu ---
+Restart the console?=Konsol yeniden başlatılsın mı?
+Sleep=Uyku modu
+Restart=Yeniden başlat
+Power off=Kapat
+Reboot to payload=Payload ile yeniden başlat
+
+# --- setup ---
+Welcome home=Tekrar hoş geldin
+Good to see you=Yeniden görmek güzel
+Ready when you are=Hazırsan başlayalım
+Setup complete. Welcome!=Kurulum tamamlandı. Hoş geldin!
+Let's set it up - just a few seconds.=Hemen ayarlayalım, çok kısa sürecek.
+Setup=Kurulum
+Pick a theme=Bir tema seç
+
+# --- dialogs ---
+SD card removed=SD kart çıkarıldı
+Please only remove the SD card while the console is off.=SD kartı yalnızca konsol kapalıyken çıkarın.
+Taking it out while powered on can corrupt your data.=Konsol açıkken çıkarmak verilerin bozulmasına neden olabilir.
+Restarting...=Yeniden başlatılıyor...
+No games to pick from=Seçilebilecek oyun yok
+No payloads found in sdmc:/payloads=sdmc:/payloads konumunda payload bulunamadı
+No music found=Müzik bulunamadı
+No .nro found in sdmc:/switch=sdmc:/switch konumunda .nro dosyası bulunamadı
+No widgets found=Widget bulunamadı
+Close running application?=Çalışan uygulama kapatılsın mı?
+Yes=Evet
+No=Hayır
+
+# --- button hints and everything else ---
+Saved=Kaydedildi
+Theme renamed=Tema yeniden adlandırıldı
+Order saved=Sıralama kaydedildi
+Removed from menu=Menüden kaldırıldı
+Hidden=Gizlendi
+Shown=Gösterildi
+The suspended game will be closed.=Askıya alınan oyun kapatılacak.
+Turn the console off?=Konsol kapatılsın mı?
+Reboot to=Şununla yeniden başlat
+Let's play=Oynamaya başlayalım
+Picking something...=Oyun seçiliyor...
+Version=Sürüm
+update available:=güncelleme mevcut:
+up to date=Güncel
+update check off=Güncelleme denetimi kapalı
+What's new=Yenilikler
+Theme applied=Tema uygulandı
+Theme saved=Tema kaydedildi
+Theme deleted=Tema silindi
+Font applied=Yazı tipi uygulandı
+Choose a layout=Bir düzen seç
+A simple scrolling text list=Kaydırılabilir sade bir metin listesi
+A cover carousel (EmulationStation)=Kaydırılabilir kapaklar (EmulationStation)
+A grid of app icons=Uygulama simgelerinden oluşan ızgara
+One fullscreen cover at a time=Tam ekranda tek kapak gösterimi
+An Xbox-360-style cover shelf=Xbox 360 tarzı kapak rafı
+PSP/PS3 cross-media bar=PSP/PS3 tarzı XMB menüsü
+Good to know=Bilmen gerekenler
+Options on any entry: favourite, rename, move=Öğeleri favorilere ekleyebilir, yeniden adlandırabilir veya taşıyabilirsin
+Fonts, colours, background music, widgets=Yazı tipleri, renkler, arka plan müziği ve widget'lar
+Browse .nro files and pin them to this menu=.nro dosyalarına göz atıp menüye sabitleyebilirsin
+Suspends your game and brings this back=Oyunu askıya alıp bu menüyü açar
+You're all set=Her şey hazır
+Enjoy sLaunch.=sLaunch'ın keyfini çıkar.
+Check for updates on startup=Başlangıçta güncellemeleri denetle
++: Power=+: Güç seçenekleri
+sort=sırala
+Enabled=Etkin
+Track=Parça
+Volume=Ses düzeyi
+Shuffle=Karışık çal
+Put mp3/ogg files in sdmc:/slaunch/music=MP3/OGG dosyalarını sdmc:/slaunch/music klasörüne koyun
+Scanning homebrew...=Homebrew uygulamaları taranıyor...
+pinned=sabitlendi
+Drop .lua widgets in sdmc:/slaunch/widgets/=.lua widget dosyalarını sdmc:/slaunch/widgets/ klasörüne koyun
+This widget has no options=Bu widget için ayar bulunmuyor
+(not set)=(ayarlanmadı)
++ New custom theme=+ Yeni özel tema
+Background=Arka plan
+Photo=Fotoğraf
+Dim=Karartma
+Blur=Bulanıklık
+Blur radius=Bulanıklık miktarı
+Snow=Kar
+Video fps=Video kare hızı (FPS)
+Gradient top=Üst geçiş rengi
+Gradient bottom=Alt geçiş rengi
+Text=Metin
+Accent=Vurgu rengi
+Secondary=İkincil renk
+Title=Başlık
+Icon background=Simge arka planı
+Icon background opacity=Simge arka planı opaklığı
+Language=Dil
+Automatic=Otomatik
+Wave lines=Dalga çizgileri
+Wave thickness=Dalga kalınlığı
+Wave amplitude=Dalga genliği
+Ribbon seed=Şerit desen kodu
+Ribbon layers=Şerit katmanları
+Ribbon Y=Şerit dikey konumu
+Save & Apply=Kaydet ve uygula
+Delete theme=Temayı sil
+Ribbon=Şerit
+Gradient=Renk geçişi
+(none)=(yok)
+Color=Renk
+applied=uygulandı
+(empty)=(boş)
+
+# --- v1.0.0 ---
+Key cleared=Anahtar temizlendi
+Key saved=Anahtar kaydedildi
+Could not download that cover=Kapak görseli indirilemedi
+Cover updated=Kapak görseli güncellendi
+No SteamGridDB key set=SteamGridDB API anahtarı ayarlanmamış
+SteamGridDB rejected the key=SteamGridDB API anahtarını kabul etmedi
+Searching...=Aranıyor...
+Loading covers...=Kapak görselleri yükleniyor...
+No match on SteamGridDB=SteamGridDB'de eşleşme bulunamadı
+No covers available=Kapak görseli bulunamadı
+Fetch failed=Veriler alınamadı
+Downloading...=İndiriliyor...
+Status=Durum
+Not connected=Bağlı değil
+Connected (wired)=Bağlı (kablolu)
+Connected=Bağlı
+Network name=Ağ adı
+Signal=Sinyal gücü
+IP address=IP adresi
+Wi-Fi=Wi-Fi
+Open network settings=Ağ ayarlarını aç
+Wi-Fi on=Wi-Fi açık
+Wi-Fi off=Wi-Fi kapalı
+Could not change Wi-Fi=Wi-Fi durumu değiştirilemedi
+Preparing box art=Oyun kapakları hazırlanıyor
+First time only=Yalnızca ilk kullanımda
+Welcome=Hoş geldin
+Theme=Tema
+Layout=Düzen
+All set=Hazır
+Flow=Akış
+A 3D coverflow shelf=3D kapak akışı rafı
+Reset to defaults=Varsayılan ayarlara dön
+Vertical covers=Dikey kapaklar
+SteamGridDB key=SteamGridDB API anahtarı
+Flow layout=Akış düzeni
+Custom=Özel
+Coverflow=Kapak akışı
+Flat=Düz
+Arc=Kavis
+Wall=Duvar
+Showcase=Vitrin
+Spiral=Spiral
+Set=Ayarlı
+Not set=Ayarlanmadı
+Debug snapshot saved=Hata ayıklama anlık görüntüsü kaydedildi
+Reset=Sıfırla
+
+# --- v1.2.0 (Deck layout) ---
+Deck=Deck
+Steam Deck: hero, covers and news=Steam Deck tarzı: öne çıkanlar, kapaklar ve haberler
+Nintendo=Nintendo
+Library=Kütüphane
+Menu=Menü
+All games=Tüm oyunlar
+Favourites=Favoriler
+Recent=Son oynananlar
+Nothing here=Burada henüz bir şey yok
+No news=Haber bulunamadı
+No widgets enabled=Etkin widget yok
+Loading...=Yükleniyor...
+Played=Oynandı
+Never played=Hiç oynanmadı
+
+# --- v1.4.0 (album clips, music art, GPU backgrounds, search) ---
+(unused)=(kullanılmıyor)
+Aurora=Kutup ışıkları
+B: Clear search    Y: Search again=B: Aramayı temizle    Y: Yeniden ara
+Camera height=Kamera yüksekliği
+Could not play that clip=Video oynatılamadı
+Curtain width=Perde genişliği
+Curtains=Perdeler
+Effect colour=Efekt rengi
+Effect colour 2=İkinci efekt rengi
+Flare size=Işık parlaması boyutu
+Grid lines=Izgara çizgileri
+Hem height=Alt kenar yüksekliği
+Hills=Tepeler
+Horizon=Ufuk
+Icon colour=Simge rengi
+Line width=Çizgi kalınlığı
+No matches=Eşleşme bulunamadı
+No screenshots or clips found=Ekran görüntüsü veya video bulunamadı
+Ocean=Okyanus
+Play=Oynat
+Reflection=Yansıma
+Retrowave=Retrowave
+Ribbon glow=Şerit ışıltısı
+Save & back=Kaydet ve geri dön
+Scroll speed=Kaydırma hızı
+Search=Ara
+Search cleared=Arama temizlendi
+Shortcuts everywhere=Her yerde kısayollar
+Sky=Gökyüzü
+Softness=Yumuşaklık
+Speed=Hız
+Star density=Yıldız yoğunluğu
+Star size=Yıldız boyutu
+Stars=Yıldızlar
+Sun X=Güneşin yatay konumu
+Sun size=Güneş boyutu
+Sway=Salınım
+Swell=Kabarma
+Twinkle speed=Parıldama hızı
+Wave density=Dalga yoğunluğu
+
+# --- v1.4.0 (music and album players) ---
+Pause=Duraklat
+Seek=İleri / geri sar
+Repeat=Tekrarla
+Repeat all=Tümünü tekrarla
+Repeat one=Tek parçayı tekrarla
+Repeat off=Tekrarlama kapalı
+Previous / next=Önceki / sonraki
+Slideshow=Slayt gösterisi
+Slideshow on=Slayt gösterisi açık
+Slideshow off=Slayt gösterisi kapalı
+Info=Bilgi
+View=Görüntüle
+A: Launch   X: Pin to menu   B: Back=A: Başlat   X: Menüye sabitle   B: Geri
+A: Run as app   Y: Applet mode   X: Pin   B: Back=A: Uygulama olarak çalıştır   Y: Applet modu   X: Sabitle   B: Geri
+Added to Favourites=Favorilere eklendi
+Removed from Favourites=Favorilerden kaldırıldı
+Anti-aliasing on next time the menu opens=Kenar yumuşatma menü yeniden açıldığında etkinleşecek
+Anti-aliasing off next time the menu opens=Kenar yumuşatma menü yeniden açıldığında kapanacak
+Homebrew donor cleared=Homebrew kaynak uygulaması kaldırıldı
+Pinned to menu=Menüye sabitlendi
+Unpinned=Sabitleme kaldırıldı
+
+# --- v1.4.0 (setup wizard, RetroArch toggle) ---
+Welcome to sLaunch=sLaunch'a hoş geldin
+A new home. Let's set it up - it only takes a moment.=Yeni bir yuva. Hemen kurulumunu yapalım.
+How your games are laid out. You can change it any time in Theming.=Oyunların nasıl görüneceğini seç. Bunu daha sonra Kişiselleştirme bölümünden değiştirebilirsin.
+Applied as you browse. Make your own later in Theming > Themes.=Gezinirken seçtiğin tema uygulanır. Daha sonra Kişiselleştirme > Temalar bölümünden kendi temanı oluşturabilirsin.
+A few things worth knowing before you start.=Başlamadan önce bilmen gereken birkaç şey var.
+Everything here can be changed later in Theming.=Buradaki tüm ayarları daha sonra Kişiselleştirme bölümünden değiştirebilirsin.
+A simple scrolling list=Kaydırılabilir sade liste
+A carousel of covers=Kaydırılabilir kapaklar
+A wall of tiles=Kutucuklardan oluşan duvar görünümü
+One big cover at a time=Tek büyük kapak görünümü
+A shelf of covers with details=Ayrıntılı kapak rafı
+The PlayStation cross-media bar=PlayStation tarzı XMB menüsü
+3D game cases on a mirrored floor=Yansıtmalı zeminde 3D oyun kutuları
+RetroArch games=RetroArch oyunları
+RetroArch games (beta)=RetroArch oyunları (beta)
+Heya! this feature is beta and really unstable! If you have over a thousand ROMs in your library be aware that the system may crash sometimes!=Dikkat! Bu özellik henüz beta aşamasında ve kararsız çalışabilir. Kütüphanende 1.000'den fazla ROM varsa sistem zaman zaman çökebilir!
+
+# --- button hint icons (A/B/X/Y/L/R/+/-/D-pad/stick prompts) ---
+Adjust=Ayarla
+Adjust value=Değeri ayarla
+Adjust video fps=Video kare hızını ayarla
+Apply=Uygula
+Backspace=Geri sil
+Browse=Göz at
+Change=Değiştir
+Change background type=Arka plan türünü değiştir
+Choose=Seç
+Choose photo overlay=Fotoğraf katmanını seç
+Close=Kapat
+Configure=Yapılandır
+Confirm=Onayla
+Create new theme=Yeni tema oluştur
+Delete this theme=Bu temayı sil
+Done=Bitti
+Edit=Düzenle
+Edit color=Rengi düzenle
+Edit/Toggle=Düzenle / aç-kapat
+Finish=Bitir
+Get started=Başla
+Jump=Atla
+Launch=Başlat
+Look/Turn=Bak / döndür
+Next=İleri
+On/Off=Aç / kapat
+Open=Aç
+Options=Seçenekler
+Play/pause=Oynat / duraklat
+Preview=Önizleme
+Reboot into it=Bununla yeniden başlat
+Row=Satır
+Save & apply=Kaydet ve uygula
+Scroll=Kaydır
+Select=Seç
+Shift=Yer değiştir
+System album=Sistem albümü
+Tab=Sekme
+Toggle=Aç / kapat
+Toggle effect=Efekti aç / kapat
+Type=Yaz
+Use this=Bunu kullan
+
+# --- v1.4.0 (GameTDB, layout gallery) ---
+Homebrew donor set (browser Y: run as app)=Homebrew kaynak uygulaması ayarlandı (tarayıcıda Y: uygulama olarak çalıştır)
+Box art region=Oyun kapağı bölgesi
+Recommended=Önerilen
+recommended=önerilen
+
+# --- v1.4.0 (file manager) ---
+A folder cannot go inside itself=Bir klasör kendi içine taşınamaz
+Actions=İşlemler
+Cancelled=İptal edildi
+Copied=Kopyalandı
+Copy=Kopyala
+Copying=Kopyalanıyor
+Could not create the folder=Klasör oluşturulamadı
+Could not open that picture=Görsel açılamadı
+Could not rename=Yeniden adlandırılamadı
+Could not start=Başlatılamadı
+Cut=Kes
+Delete=Sil
+Delete this?=Bu öğe silinsin mi?
+Deleting=Siliniyor
+Files=Dosyalar
+Moving=Taşınıyor
+New folder=Yeni klasör
+Not a valid name=Geçersiz ad
+Nothing here opens this kind of file=Bu dosya türünü açabilecek bir uygulama yok
+Page=Sayfa
+Paste here=Buraya yapıştır
+Something went wrong - nothing was lost=Bir sorun oluştu, hiçbir veri kaybolmadı
+That is gone=Öğe silindi
+That name is taken=Bu ad zaten kullanılıyor
+This folder is empty=Bu klasör boş
+and everything in it=ve içindeki tüm öğeler
+
+# --- v1.4.0 (box art status) ---
+SteamGridDB=SteamGridDB
+Looking up=Aranıyor
+Updating the game list=Oyun listesi güncelleniyor
+Downloading box art=Oyun kapakları indiriliyor
+Saving=Kaydediliyor
+Screenshots=Ekran görüntüleri
+Box art added=Oyun kapağı eklendi
+No box art found=Oyun kapağı bulunamadı
+Could not download=İndirilemedi
+
+# --- USB file transfer ---
+Receiving=Alınıyor
+Sending=Gönderiliyor
+USB transfer done=USB aktarımı tamamlandı
+%u received, %u sent, %u deleted=%u alındı, %u gönderildi, %u silindi
+Connected to a computer: SD card open for file transfer=Bilgisayara bağlandı: SD kart dosya aktarımına açık
+
+# --- crash reports ---
+App crash detected! :(=Uygulama çöktü! :(
+%s crashed. Atmosphere usually saves the crash details, check the logs: atmosphere/crash_reports/%s=%s çöktü. Atmosphere genellikle çökme ayrıntılarını kaydeder. Günlükleri kontrol edin: atmosphere/crash_reports/%s
+%s hit a fatal error. Atmosphere usually saves the crash details, check the logs: atmosphere/fatal_reports/%s=%s kritik bir hatayla karşılaştı. Atmosphere genellikle hata ayrıntılarını kaydeder. Günlükleri kontrol edin: atmosphere/fatal_reports/%s
+(%d crashes since you last saw this menu)=(Bu menüyü son açışınızdan beri %d kez çökme yaşandı)
+Program=Program
+OK=Tamam
+Could not do that=İşlem gerçekleştirilemedi
+Not enough space in system memory to create this game's save data. Free some up (delete unused data or move games to the SD card) and try again.=Bu oyunun kayıt verilerini oluşturmak için sistem belleğinde yeterli alan yok. Gereksiz verileri silin veya oyunları SD karta taşıyın ve yeniden deneyin.
+
+# --- added in 1.5.x ---
+AMOLED=AMOLED
+Background art=Arka plan görseli
+Blur is not available for video wallpapers   B: Back=Video duvar kâğıtlarında bulanıklık kullanılamaz   B: Geri
+Box thickness=Kutu kalınlığı
+Box width=Kutu genişliği
+Camera distance=Kamera uzaklığı
+Centre gap=Orta boşluk
+Chinese=Çince
+Dark Blue=Koyu mavi
+Default (System)=Varsayılan (sistem)
+Depth drop=Derinlik düşüşü
+Depth per step=Adım başına derinlik
+English=İngilizce
+Forest=Orman
+French=Fransızca
+Game icon=Oyun simgesi
+German=Almanca
+Japanese=Japonca
+Letter=Harf
+Midnight Purple=Gece moru
+Portuguese=Portekizce
+Resume=Devam et
+Row height=Sıra yüksekliği
+Russian=Rusça
+Screenshot=Ekran görüntüsü
+Shelf style=Raf stili
+Spacing=Aralık
+Spanish=İspanyolca
+Start=Başlat
+Turkish=Türkçe
+Turn=Dönüş
+Turn per step=Adım başına dönüş
+Warm Dark=Sıcak koyu
+Widget=Widget
+Ask who's playing=Kimin oynadığını sor
+Bluetooth=Bluetooth
+Not available=Kullanılamıyor
+Search for audio devices=Ses cihazlarını ara
+Needs system update 13.0.0=Sistem sürümü 13.0.0 gerekli
+Pair=Eşle
+Disconnect=Bağlantıyı kes
+Connect=Bağlan
+Forget=Unut
+Bluetooth off=Bluetooth kapalı
+Bluetooth on=Bluetooth açık
+Could not change Bluetooth=Bluetooth değiştirilemedi
+Turn Bluetooth on first=Önce Bluetooth'u açın
+Could not search for devices=Cihaz aranamadı
+Could not connect=Bağlanılamadı
+Disconnecting...=Bağlantı kesiliyor...
+Connecting...=Bağlanılıyor...
+Device forgotten=Cihaz unutuldu
+Could not pair=Eşlenemedi
+Pairing...=Eşleniyor...
+Turn off system modules=Sistem modüllerini kapatın
+Sysmodules that hook into the HOME Menu are the most common cause of crashes.=HOME menüsüne bağlanan sistem modülleri çökmelerin en yaygın nedenidir.
+Many Atmosphere sysmodules inject into the HOME Menu, which sLaunch replaces. Before reporting a crash or freeze, turn them off in the Sysmodules overlay (or rename atmosphere/contents/<id>/flags/boot2.flag) and restart.=Pek çok Atmosphere sistem modülü, sLaunch'un yerini aldığı HOME menüsüne bağlanır. Bir çökme ya da donma bildirmeden önce bunları Sysmodules katmanından kapatın (veya atmosphere/contents/<id>/flags/boot2.flag dosyasının adını değiştirin) ve yeniden başlatın.
+No sysmodules start at boot. You're good to go.=Açılışta başlayan sistem modülü yok. Hazırsınız.
+Starting at boot on this console:=Bu konsolda açılışta başlayanlar:
+Sysmodules that hook into the HOME Menu are the most common cause of crashes and freezes with sLaunch. Turn them off in the Sysmodules overlay and restart. Starting at boot:=HOME menüsüne bağlanan sistem modülleri, sLaunch'ta çökme ve donmaların en yaygın nedenidir. Sysmodules katmanından kapatıp yeniden başlatın. Açılışta başlayanlar:
+B: Clear search=B: Aramayı temizle
+B: Back=B: Geri
+New collection=Yeni koleksiyon
+Delete collection=Koleksiyonu sil
+Collections=Koleksiyonlar
+Collection deleted=Koleksiyon silindi
+Collection created=Koleksiyon oluşturuldu
+X on a game: Collections > New collection=Bir oyunda X: Koleksiyonlar > Yeni koleksiyon
+Online count=Çevrimiçi sayım
+sLaunch counts how many consoles are online with a random ID. Theming > Online count turns it off.=sLaunch, rastgele bir kimlikle kaç konsolun çevrimiçi olduğunu sayar. Theming > Çevrimiçi sayım ile kapatılabilir.
+Update available:=Güncelleme mevcut:
+see Theming > About=Theming > About bölümüne bakın
+USB file transfer=USB dosya aktarımı
+USB file transfer on=USB dosya aktarımı açık
+USB file transfer off=USB dosya aktarımı kapalı
+Start as user=Şu kullanıcıyla başla
+Hide=Gizle
+Unhide=Göster
+Unhidden=Tekrar görünür
+Hidden - Theming > Show hidden games=Gizlendi - Kişiselleştirme > Gizli oyunları göster
+Show hidden games=Gizli oyunları göster
+X on a game: Hide=Bir oyunda X: Gizle

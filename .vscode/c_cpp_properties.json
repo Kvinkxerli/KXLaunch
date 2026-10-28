@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Switch",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/projects/sMenu/include",
+                "${workspaceFolder}/projects/sSystem/include",
+                "${workspaceFolder}/libs/sCommon/include",
+                "D:/devkitPro/libnx/include",
+                "D:/devkitPro/portlibs/switch/include",
+                "D:/devkitPro/devkitA64/aarch64-none-elf/include",
+                "D:/devkitPro/devkitA64/aarch64-none-elf/include/c++/16.1.0",
+                "D:/devkitPro/devkitA64/aarch64-none-elf/include/c++/16.1.0/aarch64-none-elf"
+            ],
+            "defines": [
+                "__SWITCH__=1",
+                "SWITCH=1",
+                "NN_NINTENDO_SDK=1"
+            ],
+            "compilerPath": "D:/devkitPro/devkitA64/bin/aarch64-none-elf-g++.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-arm64"
+        }
+    ],
+    "version": 4
+}

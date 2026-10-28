@@ -1,0 +1,711 @@
+# sLaunch locale template.
+#
+# English is built in and is always the fallback: any string missing here (or a
+# missing file entirely) simply renders in English. To translate the menu:
+#   1. Copy this file to  <code>.txt  where <code> is your language code, e.g.
+#      fr.txt, de.txt, es.txt, ja.txt, pt-BR.txt (region form is tried first,
+#      then the two-letter form).
+#   2. Put it in  sdmc:/slaunch/lang/  on the SD card.
+#   3. Replace the text on the RIGHT of each '=' with your translation. Leave the
+#      LEFT side (the English key) exactly as it is.
+# Lines starting with '#' and blank lines are ignored. The console's system
+# language selects which file is loaded.
+#
+# This file is generated from the menu sources; every string the menu can show
+# is listed. Button hints ("A: Select", "B: Back", ...) are drawn as real
+# button icons now, not text - what you're translating for those is just the
+# action word (e.g. "Select" on its own, under "button hint icons" below).
+#
+# Non-Latin scripts need a font that has those glyphs. The console's own font
+# covers Japanese, Chinese and Korean and the menu picks it up automatically
+# from the system language; for anything else, drop a TTF/OTF in
+# sdmc:/slaunch/fonts and choose it under Theming > Fonts.
+
+
+# --- main menu shortcuts ---
+Theming=Theming
+Random game=Random game
+Controllers=Controllers
+Album=Album
+Media=Media
+User Page=User Page
+Web Browser=Web Browser
+Mii Edit=Mii Edit
+Settings=Settings
+Power=Power
+Homebrew menu=Homebrew menu
+User=User
+Network=Network
+Games=Games
+Homebrew=Homebrew
+
+# --- entry options (X) ---
+Renamed=Renamed
+Remove from Favourites=Remove from Favourites
+Add to Favourites=Add to Favourites
+Rename=Rename
+Homebrew donor (set)=Homebrew donor (set)
+Use as homebrew donor=Use as homebrew donor
+Remove from menu=Remove from menu
+Move=Move
+Choose cover=Choose cover
+Tile size: =Tile size: 
+Small=Small
+Wide=Wide
+Large=Large
+Tile colour=Tile colour
+Anti-aliasing=Anti-aliasing
+Columns=Columns
+Rows=Rows
+Wrap around=Wrap around
+Button hints=Button hints
+Position counter=Position counter
+Default colour=Default colour
+Remove tile=Remove tile
+Add widget=Add widget
+Widget added=Widget added
+Playing=Playing
+Paused=Paused
+Close game=Close game
+Sort: =Sort: 
+Cancel=Cancel
+Move: D-pad to reorder, A to place=Move: D-pad to reorder, A to place
+Rename theme=Rename theme
+
+# --- sort modes ---
+Title A - Z=Title A - Z
+Title Z - A=Title Z - A
+Game card first=Game card first
+Recently played=Recently played
+Most played=Most played
+Default=Default
+Default payload=Default payload
+
+# --- play time ---
+Today=Today
+Yesterday=Yesterday
+days ago=days ago
+months ago=months ago
+years ago=years ago
+
+# --- entry state ---
+Loading games...=Loading games...
+No apps found=No apps found
+Game card=Game card
+Archived=Archived
+Nintendo Switch=Nintendo Switch
+Running=Running
+Update available=Update available
+
+# --- theming + appearance ---
+Menu entries=Menu entries
+Screen timeout=Screen timeout
+Screen timeout (TV)=Screen timeout (TV)
+Ask who's playing=Ask who's playing
+Never=Never
+min=min
+h=h
+found=found
+Back=Back
+About=About
+Applied=Applied
+List=List
+Line=Line
+Grid=Grid
+Cover=Cover
+Shelf=Shelf
+XMB=XMB
+On=On
+Off=Off
+Left=Left
+Center=Center
+Right=Right
+Themes=Themes
+UI mode=UI mode
+Text position=Text position
+List icons=List icons
+Icon pack=Icon pack
+Fonts=Fonts
+Music=Music
+Widgets=Widgets
+Welcome screen=Welcome screen
+Check for updates=Check for updates
+Built-in=Built-in
+current=current
+
+# --- power menu ---
+Restart the console?=Restart the console?
+Sleep=Sleep
+Restart=Restart
+Power off=Power off
+Reboot to payload=Reboot to payload
+
+# --- setup ---
+Welcome home=Welcome home
+Good to see you=Good to see you
+Ready when you are=Ready when you are
+Setup complete. Welcome!=Setup complete. Welcome!
+Let's set it up - just a few seconds.=Let's set it up - just a few seconds.
+Setup=Setup
+Pick a theme=Pick a theme
+
+# --- dialogs ---
+SD card removed=SD card removed
+Please only remove the SD card while the console is off.=Please only remove the SD card while the console is off.
+Taking it out while powered on can corrupt your data.=Taking it out while powered on can corrupt your data.
+Restarting...=Restarting...
+No games to pick from=No games to pick from
+No payloads found in sdmc:/payloads=No payloads found in sdmc:/payloads
+No music found=No music found
+No .nro found in sdmc:/switch=No .nro found in sdmc:/switch
+No widgets found=No widgets found
+Close running application?=Close running application?
+Yes=Yes
+No=No
+
+# --- button hints and everything else ---
+Saved=Saved
+Theme renamed=Theme renamed
+Order saved=Order saved
+Removed from menu=Removed from menu
+Hidden=Hidden
+Shown=Shown
+The suspended game will be closed.=The suspended game will be closed.
+Turn the console off?=Turn the console off?
+Reboot to=Reboot to
+Let's play=Let's play
+Picking something...=Picking something...
+Version=Version
+update available:=update available:
+up to date=up to date
+update check off=update check off
+What's new=What's new
+Theme applied=Theme applied
+Theme saved=Theme saved
+Theme deleted=Theme deleted
+Font applied=Font applied
+Choose a layout=Choose a layout
+A simple scrolling text list=A simple scrolling text list
+A cover carousel (EmulationStation)=A cover carousel (EmulationStation)
+A grid of app icons=A grid of app icons
+One fullscreen cover at a time=One fullscreen cover at a time
+An Xbox-360-style cover shelf=An Xbox-360-style cover shelf
+PSP/PS3 cross-media bar=PSP/PS3 cross-media bar
+Good to know=Good to know
+Options on any entry: favourite, rename, move=Options on any entry: favourite, rename, move
+Fonts, colours, background music, widgets=Fonts, colours, background music, widgets
+Browse .nro files and pin them to this menu=Browse .nro files and pin them to this menu
+Suspends your game and brings this back=Suspends your game and brings this back
+You're all set=You're all set
+Enjoy sLaunch.=Enjoy sLaunch.
+Check for updates on startup=Check for updates on startup
++: Power=+: Power
+sort=sort
+Enabled=Enabled
+Track=Track
+Volume=Volume
+Shuffle=Shuffle
+Put mp3/ogg files in sdmc:/slaunch/music=Put mp3/ogg files in sdmc:/slaunch/music
+Scanning homebrew...=Scanning homebrew...
+pinned=pinned
+Drop .lua widgets in sdmc:/slaunch/widgets/=Drop .lua widgets in sdmc:/slaunch/widgets/
+This widget has no options=This widget has no options
+(not set)=(not set)
++ New custom theme=+ New custom theme
+Background=Background
+Photo=Photo
+Dim=Dim
+Blur=Blur
+Blur radius=Blur radius
+Snow=Snow
+Video fps=Video fps
+Gradient top=Gradient top
+Gradient bottom=Gradient bottom
+Text=Text
+Accent=Accent
+Secondary=Secondary
+Title=Title
+Icon background=Icon background
+Icon background opacity=Icon background opacity
+Language=Language
+Automatic=Automatic
+Wave lines=Wave lines
+Wave thickness=Wave thickness
+Wave amplitude=Wave amplitude
+Ribbon seed=Ribbon seed
+Ribbon layers=Ribbon layers
+Ribbon Y=Ribbon Y
+Save & Apply=Save & Apply
+Delete theme=Delete theme
+Ribbon=Ribbon
+Gradient=Gradient
+(none)=(none)
+Color=Color
+applied=applied
+(empty)=(empty)
+
+# --- v1.0.0 ---
+Key cleared=Key cleared
+Key saved=Key saved
+Could not download that cover=Could not download that cover
+Cover updated=Cover updated
+No SteamGridDB key set=No SteamGridDB key set
+SteamGridDB rejected the key=SteamGridDB rejected the key
+Searching...=Searching...
+Loading covers...=Loading covers...
+No match on SteamGridDB=No match on SteamGridDB
+No covers available=No covers available
+Fetch failed=Fetch failed
+Downloading...=Downloading...
+Status=Status
+Not connected=Not connected
+Connected (wired)=Connected (wired)
+Connected=Connected
+Network name=Network name
+Signal=Signal
+IP address=IP address
+Wi-Fi=Wi-Fi
+Open network settings=Open network settings
+Wi-Fi on=Wi-Fi on
+Wi-Fi off=Wi-Fi off
+Could not change Wi-Fi=Could not change Wi-Fi
+Preparing box art=Preparing box art
+First time only=First time only
+Welcome=Welcome
+Theme=Theme
+Layout=Layout
+All set=All set
+Flow=Flow
+A 3D coverflow shelf=A 3D coverflow shelf
+Reset to defaults=Reset to defaults
+Vertical covers=Vertical covers
+SteamGridDB key=SteamGridDB key
+Flow layout=Flow layout
+Custom=Custom
+Coverflow=Coverflow
+Flat=Flat
+Arc=Arc
+Wall=Wall
+Showcase=Showcase
+Spiral=Spiral
+Set=Set
+Not set=Not set
+Debug snapshot saved=Debug snapshot saved
+Reset=Reset
+
+# --- v1.2.0 (Deck layout) ---
+Deck=Deck
+Steam Deck: hero, covers and news=Steam Deck: hero, covers and news
+Nintendo=Nintendo
+Library=Library
+Menu=Menu
+All games=All games
+Favourites=Favourites
+Recent=Recent
+Nothing here=Nothing here
+No news=No news
+No widgets enabled=No widgets enabled
+Loading...=Loading...
+Played=Played
+Never played=Never played
+
+# --- v1.4.0 (album clips, music art, GPU backgrounds, search) ---
+(unused)=(unused)
+Aurora=Aurora
+B: Clear search    Y: Search again=B: Clear search    Y: Search again
+Camera height=Camera height
+Could not play that clip=Could not play that clip
+Curtain width=Curtain width
+Curtains=Curtains
+Effect colour=Effect colour
+Effect colour 2=Effect colour 2
+Flare size=Flare size
+Grid lines=Grid lines
+Hem height=Hem height
+Hills=Hills
+Horizon=Horizon
+Icon colour=Icon colour
+Line width=Line width
+No matches=No matches
+No screenshots or clips found=No screenshots or clips found
+Ocean=Ocean
+Play=Play
+Reflection=Reflection
+Retrowave=Retrowave
+Ribbon glow=Ribbon glow
+Save & back=Save & back
+Scroll speed=Scroll speed
+Search=Search
+Search cleared=Search cleared
+Shortcuts everywhere=Shortcuts everywhere
+Sky=Sky
+Softness=Softness
+Speed=Speed
+Star density=Star density
+Star size=Star size
+Stars=Stars
+Sun X=Sun X
+Sun size=Sun size
+Sway=Sway
+Swell=Swell
+Twinkle speed=Twinkle speed
+Wave density=Wave density
+
+# --- v1.4.0 (music and album players) ---
+Pause=Pause
+Seek=Seek
+Repeat=Repeat
+Repeat all=Repeat all
+Repeat one=Repeat one
+Repeat off=Repeat off
+Previous / next=Previous / next
+Slideshow=Slideshow
+Slideshow on=Slideshow on
+Slideshow off=Slideshow off
+Info=Info
+View=View
+A: Launch   X: Pin to menu   B: Back=A: Launch   X: Pin to menu   B: Back
+A: Run as app   Y: Applet mode   X: Pin   B: Back=A: Run as app   Y: Applet mode   X: Pin   B: Back
+Added to Favourites=Added to Favourites
+Removed from Favourites=Removed from Favourites
+Anti-aliasing on next time the menu opens=Anti-aliasing on next time the menu opens
+Anti-aliasing off next time the menu opens=Anti-aliasing off next time the menu opens
+Homebrew donor cleared=Homebrew donor cleared
+Pinned to menu=Pinned to menu
+Unpinned=Unpinned
+
+# --- v1.4.0 (setup wizard, RetroArch toggle) ---
+Welcome to sLaunch=Welcome to sLaunch
+A new home. Let's set it up - it only takes a moment.=A new home. Let's set it up - it only takes a moment.
+How your games are laid out. You can change it any time in Theming.=How your games are laid out. You can change it any time in Theming.
+Applied as you browse. Make your own later in Theming > Themes.=Applied as you browse. Make your own later in Theming > Themes.
+A few things worth knowing before you start.=A few things worth knowing before you start.
+Everything here can be changed later in Theming.=Everything here can be changed later in Theming.
+A simple scrolling list=A simple scrolling list
+A carousel of covers=A carousel of covers
+A wall of tiles=A wall of tiles
+One big cover at a time=One big cover at a time
+A shelf of covers with details=A shelf of covers with details
+The PlayStation cross-media bar=The PlayStation cross-media bar
+3D game cases on a mirrored floor=3D game cases on a mirrored floor
+RetroArch games=RetroArch games
+RetroArch games (beta)=RetroArch games (beta)
+Heya! this feature is beta and really unstable! If you have over a thousand ROMs in your library be aware that the system may crash sometimes!=Heya! this feature is beta and really unstable! If you have over a thousand ROMs in your library be aware that the system may crash sometimes!
+
+# --- button hint icons (A/B/X/Y/L/R/+/-/D-pad/stick prompts) ---
+Adjust=Adjust
+Adjust value=Adjust value
+Adjust video fps=Adjust video fps
+Apply=Apply
+Backspace=Backspace
+Browse=Browse
+Change=Change
+Change background type=Change background type
+Choose=Choose
+Choose photo overlay=Choose photo overlay
+Close=Close
+Configure=Configure
+Confirm=Confirm
+Create new theme=Create new theme
+Delete this theme=Delete this theme
+Done=Done
+Edit=Edit
+Edit color=Edit color
+Edit/Toggle=Edit/Toggle
+Finish=Finish
+Get started=Get started
+Jump=Jump
+Launch=Launch
+Look/Turn=Look/Turn
+Next=Next
+On/Off=On/Off
+Open=Open
+Options=Options
+Play/pause=Play/pause
+Preview=Preview
+Reboot into it=Reboot into it
+Row=Row
+Save & apply=Save & apply
+Scroll=Scroll
+Select=Select
+Shift=Shift
+System album=System album
+Tab=Tab
+Toggle=Toggle
+Toggle effect=Toggle effect
+Type=Type
+Use this=Use this
+
+# --- v1.4.0 (GameTDB, layout gallery) ---
+Homebrew donor set (browser Y: run as app)=Homebrew donor set (browser Y: run as app)
+Box art region=Box art region
+Recommended=Recommended
+recommended=recommended
+
+# --- v1.4.0 (file manager) ---
+A folder cannot go inside itself=A folder cannot go inside itself
+Actions=Actions
+Cancelled=Cancelled
+Copied=Copied
+Copy=Copy
+Copying=Copying
+Could not create the folder=Could not create the folder
+Could not open that picture=Could not open that picture
+Could not rename=Could not rename
+Could not start=Could not start
+Cut=Cut
+Delete=Delete
+Delete this?=Delete this?
+Deleting=Deleting
+Files=Files
+Moving=Moving
+New folder=New folder
+Not a valid name=Not a valid name
+Nothing here opens this kind of file=Nothing here opens this kind of file
+Page=Page
+Paste here=Paste here
+Something went wrong - nothing was lost=Something went wrong - nothing was lost
+That is gone=That is gone
+That name is taken=That name is taken
+This folder is empty=This folder is empty
+and everything in it=and everything in it
+
+# --- v1.4.0 (box art status) ---
+SteamGridDB=SteamGridDB
+Looking up=Looking up
+Updating the game list=Updating the game list
+Downloading box art=Downloading box art
+Saving=Saving
+Screenshots=Screenshots
+Box art added=Box art added
+No box art found=No box art found
+Could not download=Could not download
+
+# --- USB file transfer ---
+Receiving=Receiving
+Sending=Sending
+USB transfer done=USB transfer done
+%u received, %u sent, %u deleted=%u received, %u sent, %u deleted
+Connected to a computer: SD card open for file transfer=Connected to a computer: SD card open for file transfer
+
+# --- crash reports ---
+App crash detected! :(=App crash detected! :(
+%s crashed. Atmosphere usually saves the crash details, check the logs: atmosphere/crash_reports/%s=%s crashed. Atmosphere usually saves the crash details, check the logs: atmosphere/crash_reports/%s
+%s hit a fatal error. Atmosphere usually saves the crash details, check the logs: atmosphere/fatal_reports/%s=%s hit a fatal error. Atmosphere usually saves the crash details, check the logs: atmosphere/fatal_reports/%s
+(%d crashes since you last saw this menu)=(%d crashes since you last saw this menu)
+Program=Program
+OK=OK
+Could not do that=Could not do that
+Not enough space in system memory to create this game's save data. Free some up (delete unused data or move games to the SD card) and try again.=Not enough space in system memory to create this game's save data. Free some up (delete unused data or move games to the SD card) and try again.
+
+# --- settings, names and labels added in 1.5.x ---
+AMOLED=AMOLED
+Background art=Background art
+Blur is not available for video wallpapers   B: Back=Blur is not available for video wallpapers   B: Back
+Box thickness=Box thickness
+Box width=Box width
+Camera distance=Camera distance
+Centre gap=Centre gap
+Chinese=Chinese
+Dark Blue=Dark Blue
+Default (System)=Default (System)
+Depth drop=Depth drop
+Depth per step=Depth per step
+English=English
+Forest=Forest
+French=French
+Game icon=Game icon
+German=German
+Japanese=Japanese
+Letter=Letter
+Midnight Purple=Midnight Purple
+Portuguese=Portuguese
+Resume=Resume
+Row height=Row height
+Russian=Russian
+Screenshot=Screenshot
+Shelf style=Shelf style
+Spacing=Spacing
+Spanish=Spanish
+Start=Start
+Turkish=Turkish
+Turn=Turn
+Turn per step=Turn per step
+Warm Dark=Warm Dark
+Widget=Widget
+
+Bluetooth=Bluetooth
+Not available=Not available
+Search for audio devices=Search for audio devices
+Needs system update 13.0.0=Needs system update 13.0.0
+Pair=Pair
+Disconnect=Disconnect
+Connect=Connect
+Forget=Forget
+Bluetooth off=Bluetooth off
+Bluetooth on=Bluetooth on
+Could not change Bluetooth=Could not change Bluetooth
+Turn Bluetooth on first=Turn Bluetooth on first
+Could not search for devices=Could not search for devices
+Could not connect=Could not connect
+Disconnecting...=Disconnecting...
+Connecting...=Connecting...
+Device forgotten=Device forgotten
+Could not pair=Could not pair
+Pairing...=Pairing...
+
+Turn off system modules=Turn off system modules
+Sysmodules that hook into the HOME Menu are the most common cause of crashes.=Sysmodules that hook into the HOME Menu are the most common cause of crashes.
+Many Atmosphere sysmodules inject into the HOME Menu, which sLaunch replaces. Before reporting a crash or freeze, turn them off in the Sysmodules overlay (or rename atmosphere/contents/<id>/flags/boot2.flag) and restart.=Many Atmosphere sysmodules inject into the HOME Menu, which sLaunch replaces. Before reporting a crash or freeze, turn them off in the Sysmodules overlay (or rename atmosphere/contents/<id>/flags/boot2.flag) and restart.
+No sysmodules start at boot. You're good to go.=No sysmodules start at boot. You're good to go.
+Starting at boot on this console:=Starting at boot on this console:
+Sysmodules that hook into the HOME Menu are the most common cause of crashes and freezes with sLaunch. Turn them off in the Sysmodules overlay and restart. Starting at boot:=Sysmodules that hook into the HOME Menu are the most common cause of crashes and freezes with sLaunch. Turn them off in the Sysmodules overlay and restart. Starting at boot:
+
+# --- About: changelog (optional: lines left out stay in English) ---
+About screen with this changelog=About screen with this changelog
+Album list shows capture dates; fewer repeated box art lookups=Album list shows capture dates; fewer repeated box art lookups
+Album plays video clips, with a full photo viewer and slideshow=Album plays video clips, with a full photo viewer and slideshow
+Anti-aliasing option (Theming) - smoother edges everywhere=Anti-aliasing option (Theming) - smoother edges everywhere
+Any tile can be given a colour of its own=Any tile can be given a colour of its own
+Background music from the SD, resumes where it left off=Background music from the SD, resumes where it left off
+Box art fetched automatically (Theming > SteamGridDB key)=Box art fetched automatically (Theming > SteamGridDB key)
+Box art from GameTDB, full box scans included, with a region choice=Box art from GameTDB, full box scans included, with a region choice
+Box art loads in the background - no more stutter landing on a game=Box art loads in the background - no more stutter landing on a game
+Clear message when there is no space left for a game's save data=Clear message when there is no space left for a game's save data
+Closing a homebrew returns to the menu instead of relaunching it=Closing a homebrew returns to the menu instead of relaunching it
+Confirm / click / back sounds (drop them in slaunch/sounds)=Confirm / click / back sounds (drop them in slaunch/sounds)
+Deck mode - a SteamOS-style layout: your library, news cards, a library grid and a side menu=Deck mode - a SteamOS-style layout: your library, news cards, a library grid and a side menu
+Every button hint is now a real button icon, not text=Every button hint is now a real button icon, not text
+Every screen is now fully translated=Every screen is now fully translated
+Every submenu now wears the XMB look too=Every submenu now wears the XMB look too
+Favourite homebrew - it sits up top with your favourite games=Favourite homebrew - it sits up top with your favourite games
+File manager: browse the SD card, copy, move, rename and delete=File manager: browse the SD card, copy, move, rename and delete
+Fixed games that pick their own players asking for the user again and again=Fixed games that pick their own players asking for the user again and again
+Fixed homebrew launching and logging (SD card file access)=Fixed homebrew launching and logging (SD card file access)
+Fixed the ~2s freeze on every menu appearance=Fixed the ~2s freeze on every menu appearance
+Fixed touches that got silently swallowed or left a screen stranded=Fixed touches that got silently swallowed or left a screen stranded
+Fixed widget flickering; Web Browser opens Google=Fixed widget flickering; Web Browser opens Google
+Fixed: fully transparent colours rendered fully opaque=Fixed: fully transparent colours rendered fully opaque
+Fixed: red and blue swapped, crashes on bad images and big ROM libraries, choppy clip audio=Fixed: red and blue swapped, crashes on bad images and big ROM libraries, choppy clip audio
+Fixed: some games showing another game's Steam news=Fixed: some games showing another game's Steam news
+Flow boxes are rounder - faces are drawn in finer strips=Flow boxes are rounder - faces are drawn in finer strips
+Flow is real 3D - solid boxes with lighting, reflections and printed box scans=Flow is real 3D - solid boxes with lighting, reflections and printed box scans
+Flow layout presets: Coverflow, Flat, Arc, Wall, Showcase, Spiral=Flow layout presets: Coverflow, Flat, Arc, Wall, Showcase, Spiral
+Flow mode - a 3D shelf of game boxes you can turn around=Flow mode - a 3D shelf of game boxes you can turn around
+Flow scrolls smoothly; covers load ahead of the row=Flow scrolls smoothly; covers load ahead of the row
+French translation=French translation
+Game art behind the shelf like the PS4: screenshots and key art (Theming > Background art)=Game art behind the shelf like the PS4: screenshots and key art (Theming > Background art)
+Games no longer crash on launch when their save data is missing=Games no longer crash on launch when their save data is missing
+Grid is now a wall of tiles, in three sizes=Grid is now a wall of tiles, in three sizes
+Grid looks like Windows 10 Mobile tiles; Shelf like the Xbox 360=Grid looks like Windows 10 Mobile tiles; Shelf like the Xbox 360
+HOME button opens the Deck side menu=HOME button opens the Deck side menu
+Home widgets can be placed on the wall as live tiles=Home widgets can be placed on the wall as live tiles
+Homebrew can hand over to other homebrew, and arguments now survive the launch=Homebrew can hand over to other homebrew, and arguments now survive the launch
+Homebrew category lists everything on your card, not just pins=Homebrew category lists everything on your card, not just pins
+Homebrew chainloads can run with full RAM (see the README)=Homebrew chainloads can run with full RAM (see the README)
+Homebrew icons cached + loaded instantly, no more menu hang=Homebrew icons cached + loaded instantly, no more menu hang
+Homebrew runs as a full application via a donor game (crash fixed)=Homebrew runs as a full application via a donor game (crash fixed)
+Icon background opacity slider; Minimal is the default pack=Icon background opacity slider; Minimal is the default pack
+Icon packs (Theming > Icon pack) + bundled Minimal pack=Icon packs (Theming > Icon pack) + bundled Minimal pack
+Installer: check + install updates online, reboot button=Installer: check + install updates online, reboot button
+Installer: full uninstall, keeps your settings on reinstall=Installer: full uninstall, keeps your settings on reinstall
+Korean/Chinese consoles now use their own system font=Korean/Chinese consoles now use their own system font
+Language can be set by hand (Theming > Language)=Language can be set by hand (Theming > Language)
+Localization, faster boot/suspend, Shelf UI mode=Localization, faster boot/suspend, Shelf UI mode
+Lua widgets, app icons, extra UI modes=Lua widgets, app icons, extra UI modes
+Media category: screenshot viewer + menu music in one place=Media category: screenshot viewer + menu music in one place
+Menu is usable straight away - no more freeze after it appears=Menu is usable straight away - no more freeze after it appears
+Menu opens much faster - art loads after it appears=Menu opens much faster - art loads after it appears
+Much better loading speed for Flow and the other modes=Much better loading speed for Flow and the other modes
+Music has a full player: album art, track list, seeking, repeat, shuffle, volume=Music has a full player: album art, track list, seeking, repeat, shuffle, volume
+NetSurf is filed under Network in XMB, next to the browser=NetSurf is filed under Network in XMB, next to the browser
+New Ocean background, Retrowave hills, and every background runs on the GPU=New Ocean background, Retrowave hills, and every background runs on the GPU
+New Shelf style like the PS4 home screen - Shelf is now the default layout=New Shelf style like the PS4 home screen - Shelf is now the default layout
+New icons: gear, music, games, homebrew, media=New icons: gear, music, games, homebrew, media
+Optional content filter for covers and news, off unless you turn it on=Optional content filter for covers and news, off unless you turn it on
+Optional update check on startup (opt-out in setup / Theming)=Optional update check on startup (opt-out in setup / Theming)
+PS4 Shelf keeps the games you passed visible on the left=PS4 Shelf keeps the games you passed visible on the left
+Random game entry - rolls through your library and picks one=Random game entry - rolls through your library and picks one
+Reboot and shutdown fixed (no more half-asleep console)=Reboot and shutdown fixed (no more half-asleep console)
+Reorder any entry, more sorting options, reworked setup=Reorder any entry, more sorting options, reworked setup
+Ribbon reworked - real depth, up to 12 layers, free placement=Ribbon reworked - real depth, up to 12 layers, free placement
+Runs on SDL3 and Vulkan: smoother 60 fps scrolling and effects=Runs on SDL3 and Vulkan: smoother 60 fps scrolling and effects
+Screen timeout settings (handheld and TV) under Theming=Screen timeout settings (handheld and TV) under Theming
+Settings are per user now - theme, layout, favourites and the rest follow the account=Settings are per user now - theme, layout, favourites and the rest follow the account
+Setup restyled to match the rest of the menu=Setup restyled to match the rest of the menu
+Shelf can show vertical box art (Theming > Vertical covers)=Shelf can show vertical box art (Theming > Vertical covers)
+Show or hide any system entry (Theming > Menu entries)=Show or hide any system entry (Theming > Menu entries)
+Simpler first-run setup, with a gallery to pick your layout=Simpler first-run setup, with a gallery to pick your layout
+Smoother fade between screens=Smoother fade between screens
+Soft sound when the cursor moves (replace sounds/move.wav to change it)=Soft sound when the cursor moves (replace sounds/move.wav to change it)
+SteamGridDB is optional now; box art downloads show their progress=SteamGridDB is optional now; box art downloads show their progress
+Switching accounts now launches games on the right account=Switching accounts now launches games on the right account
+The theme editor saves when you close it=The theme editor saves when you close it
+Theme colour for the icon background; drag scrolls the content=Theme colour for the icon background; drag scrolls the content
+Translations: Russian, Japanese, German, Spanish, Chinese=Translations: Russian, Japanese, German, Spanish, Chinese
+UI sounds; homebrew browser (pin, launch as applet or app)=UI sounds; homebrew browser (pin, launch as applet or app)
+USB file transfer - plug into a computer on the menu to copy files, with progress shown=USB file transfer - plug into a computer on the menu to copy files, with progress shown
+Wall columns and rows are adjustable (Theming)=Wall columns and rows are adjustable (Theming)
+Welcome screen that greets you by name on boot and after setup=Welcome screen that greets you by name on boot and after setup
+Works on older firmware - the menu finds its applet slot=Works on older firmware - the menu finds its applet slot
+Works on system update 23.0.1 (built for Atmosphere 1.12.0)=Works on system update 23.0.1 (built for Atmosphere 1.12.0)
+XMB mode - the PSP cross-media bar, with touch=XMB mode - the PSP cross-media bar, with touch
+XMB rebuilt to match the real thing, and is now the default=XMB rebuilt to match the real thing, and is now the default
+Your existing settings carry over to the first account that opens the menu=Your existing settings carry over to the first account that opens the menu
+B: Clear search=B: Clear search
+B: Back=B: Back
+New collection=New collection
+Delete collection=Delete collection
+Collections=Collections
+Collection deleted=Collection deleted
+Collection created=Collection created
+X on a game: Collections > New collection=X on a game: Collections > New collection
+Online count=Online count
+sLaunch counts how many consoles are online with a random ID. Theming > Online count turns it off.=sLaunch counts how many consoles are online with a random ID. Theming > Online count turns it off.
+Search in every layout: press Y and type a name=Search in every layout: press Y and type a name
+Collections: sort your games into folders (turn on in Theming > Collections)=Collections: sort your games into folders (turn on in Theming > Collections)
+Deck layout looks more like SteamOS: game art behind the shelf, a Collections tab in the library=Deck layout looks more like SteamOS: game art behind the shelf, a Collections tab in the library
+Anonymous online count - a random ID and the version, nothing else (Theming > Online count)=Anonymous online count - a random ID and the version, nothing else (Theming > Online count)
+Fixed labels missing inside scrolling grids with anti-aliasing on=Fixed labels missing inside scrolling grids with anti-aliasing on
+Update available:=Update available:
+see Theming > About=see Theming > About
+The update check now tells you on the home screen when a new version is out=The update check now tells you on the home screen when a new version is out
+USB file transfer=USB file transfer
+USB file transfer on=USB file transfer on
+USB file transfer off=USB file transfer off
+Start as user=Start as user
+Hide=Hide
+Unhide=Unhide
+Unhidden=Unhidden
+Hidden - Theming > Show hidden games=Hidden - Theming > Show hidden games
+Show hidden games=Show hidden games
+X on a game: Hide=X on a game: Hide
+Folders: X on a game > Collections files it in a folder, and each folder shows its first four games in every layout=Folders: X on a game > Collections files it in a folder, and each folder shows its first four games in every layout
+Hide games you never play (X > Hide); Theming > Show hidden games brings them back=Hide games you never play (X > Hide); Theming > Show hidden games brings them back
+The menu recovers from a crash on its own instead of stopping the console with an error, with widgets and anti-aliasing off until it runs cleanly=The menu recovers from a crash on its own instead of stopping the console with an error, with widgets and anti-aliasing off until it runs cleanly
+The menu stops drawing while the console sleeps, which should fix freezes after waking up=The menu stops drawing while the console sleeps, which should fix freezes after waking up
+Closing a game waits for it to really exit, so the next game always starts=Closing a game waits for it to really exit, so the next game always starts
+Uses less memory on big libraries, especially in Deck=Uses less memory on big libraries, especially in Deck
+OpenGL build: fixed white icons in Grid, Line, Cover and Flow=OpenGL build: fixed white icons in Grid, Line, Cover and Flow
+Theming > USB file transfer can switch file transfer off=Theming > USB file transfer can switch file transfer off
+Theming > Start as user boots straight into an account=Theming > Start as user boots straight into an account
+Sharper text with anti-aliasing on=Sharper text with anti-aliasing on
+Sleep from the HOME button's hold menu works now=Sleep from the HOME button's hold menu works now
+Album shows PNG screenshots, PNGShot's included=Album shows PNG screenshots, PNGShot's included
+Album opens the system album straight away when the SD card has no captures=Album opens the system album straight away when the SD card has no captures
+RetroArch playlists: games RetroArch left without a core show up, run with an installed core that fits=RetroArch playlists: games RetroArch left without a core show up, run with an installed core that fits
+RetroArch playlists are folders in every layout, not only in XMB=RetroArch playlists are folders in every layout, not only in XMB
+
+# --- user profiles ---
+Who is playing?=Who is playing?
+Select a profile to start the game=Select a profile to start the game
+Select a profile to use for save data=Select a profile to use for save data
+No user profiles found=No user profiles found
+User switched=User switched
+Launch as user...=Launch as user...
+Profile=Profile
+Active=Active
+Choose=Choose
+Archived=Archived
+Game is archived=Game is archived
+

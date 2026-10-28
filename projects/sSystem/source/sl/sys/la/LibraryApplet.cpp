@@ -1,0 +1,117 @@
+#include <sl/sys/la/LibraryApplet.hpp>
+#include <sl/sys/pwr/Power.hpp>
+#include <cstring>
+
+namespace sl::sys::la {
+
+    AppletHolder g_MenuHolder = {};
+    bool         g_MenuRunning = false;
+
+    Result LaunchMenu(AppletId menu_applet_id, const void *status, size_t status_size) {
+        if (g_MenuRunning) return MAKERESULT(Module_Libnx, LibnxError_BadInput);
+
+        Result rc = appletCreateLibraryApplet(
+            &g_MenuHolder, menu_applet_id, LibAppletMode_AllForeground);
+        if (rc != 0) return rc;
+
+        LibAppletArgs la_args;
+        libappletArgsCreate(&la_args, 0);
+        libappletArgsSetPlayStartupSound(&la_args, false);
+        rc = libappletArgsPush(&la_args, &g_MenuHolder);
+
+        // Status must be pushed as input data before the applet starts.
+        if (rc == 0 && status && status_size > 0)
+            rc = libappletPushInData(&g_MenuHolder, status, status_size);
+        if (rc == 0)
+            rc = appletHolderStart(&g_MenuHolder);
+
+        // A holder left open here would leak on every retry of the caller and
+        // keep am's applet slot occupied.
+        if (rc != 0) {
+            appletHolderClose(&g_MenuHolder);
+            memset(&g_MenuHolder, 0, sizeof(g_MenuHolder));
+            return rc;
+        }
+
+        g_MenuRunning = true;
+        return 0;
+    }
+
+    void StopMenu() {
+        if (!g_MenuRunning) return;
+        appletHolderRequestExitOrTerminate(&g_MenuHolder, 15'000'000'000ULL);
+        appletHolderClose(&g_MenuHolder);
+        memset(&g_MenuHolder, 0, sizeof(g_MenuHolder));
+        g_MenuRunning = false;
+    }
+
+    bool IsMenuAlive() {
+        if (!g_MenuRunning) return false;
+        return !appletHolderCheckFinished(&g_MenuHolder);
+    }
+
+    Result PushStorage(AppletStorage &st) {
+        return appletHolderPushInData(&g_MenuHolder, &st);
+    }
+
+    Result OpenSystemApplet(AppletId id, s32 la_version,
+                            const void *in1, size_t in1_size,
+                            const void *in2, size_t in2_size) {
+        AppletHolder holder;
+        Result rc = 0;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            if (attempt > 0)
+                svcSleepThread(200'000'000ULL);
+            rc = appletCreateLibraryApplet(&holder, id, LibAppletMode_AllForeground);
+            if (rc == 0) break;
+        }
+        if (rc != 0) return rc;
+
+        // A negative version means the applet is started without common args.
+        if (la_version >= 0) {
+            LibAppletArgs la;
+            libappletArgsCreate(&la, (u32)la_version);
+            libappletArgsSetPlayStartupSound(&la, true);
+            rc = libappletArgsPush(&la, &holder);
+            if (rc != 0) { appletHolderClose(&holder); return rc; }
+        }
+
+        if (in1 && in1_size > 0) {
+            rc = libappletPushInData(&holder, in1, in1_size);
+            if (rc != 0) { appletHolderClose(&holder); return rc; }
+        }
+        if (in2 && in2_size > 0) {
+            rc = libappletPushInData(&holder, in2, in2_size);
+            if (rc != 0) { appletHolderClose(&holder); return rc; }
+        }
+
+        rc = appletHolderStart(&holder);
+        if (rc != 0) { appletHolderClose(&holder); return rc; }
+
+        // While a system applet (album/mii/hbmenu/...) is foreground the daemon
+        // is the one that receives HOME/power messages, so we must act on them
+        // here or they are lost. HOME closes the applet (this is how you exit
+        // hbmenu, which otherwise just reloads itself); power sleeps.
+        while (!appletHolderCheckFinished(&holder)) {
+            u32 msg = 0;
+            while (R_SUCCEEDED(appletGetMessage(&msg))) {
+                if (msg == 20 /*DetectShortPressingHomeButton*/) {
+                    appletHolderRequestExitOrTerminate(&holder, 5'000'000'000ULL);
+                } else if (msg == 22 /*power*/ || msg == 29 /*auto power down*/ ||
+                           msg == 25 /*HOME long-press Sleep*/ || msg == 27 || msg == 28 /*heat, battery*/) {
+                    appletStartSleepSequence(true);
+                } else if (msg == 33 /*SD card removed*/) {
+                    // Consumed here, so the main loop never sees it: do what it
+                    // would, since everything we serve lives on that card.
+                    appletHolderRequestExitOrTerminate(&holder, 3'000'000'000ULL);
+                    pwr::Reboot();
+                }
+            }
+            svcSleepThread(16'666'666ULL); // ~60fps polling
+        }
+
+        appletHolderClose(&holder);
+        return 0;
+    }
+
+} // namespace sl::sys::la

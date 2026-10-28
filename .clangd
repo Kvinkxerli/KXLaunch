@@ -1,0 +1,13 @@
+CompileFlags:
+  Add:
+    - -Iprojects/sMenu/include
+    - -Iprojects/sSystem/include
+    - -Ilibs/sCommon/include
+    - -ID:/devkitPro/libnx/include
+    - -ID:/devkitPro/portlibs/switch/include
+    - -ID:/devkitPro/devkitA64/aarch64-none-elf/include
+    - -ID:/devkitPro/devkitA64/aarch64-none-elf/include/c++/16.1.0
+    - -ID:/devkitPro/devkitA64/aarch64-none-elf/include/c++/16.1.0/aarch64-none-elf
+    - -D__SWITCH__=1
+    - -DSWITCH=1
+    - -std=c++17
